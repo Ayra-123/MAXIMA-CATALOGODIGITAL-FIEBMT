@@ -54,7 +54,8 @@ button{font-family:'Inter',sans-serif;cursor:pointer;border:none}
 .aviso-amarelo{background:#FFF6DE;border:1.5px solid var(--amarelo-esc)}
 .aviso-azul{background:var(--azul-claro);border:1.5px solid var(--azul-med)}
 .livro{display:flex;gap:12px;align-items:center;background:#fff;border:2px solid var(--borda);border-radius:16px;padding:12px;margin-bottom:10px}
-.capa{width:52px;height:74px;object-fit:cover;border-radius:8px;flex-shrink:0;background:var(--azul-claro)}
+.capa{width:52px;height:74px;object-fit:cover;border-radius:8px;flex-shrink:0;background:var(--azul-claro);
+  border:1px solid var(--borda)}
 .livro-info{flex:1;min-width:0}
 .livro-info .t{font-family:'Baloo 2',sans-serif;font-weight:700;font-size:15px;line-height:1.2;color:var(--azul);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .livro-info .a{font-size:12px;color:var(--tinta-suave);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -310,6 +311,34 @@ function capitalizar(s){
 function capaReserva(isbn){
   return "https://covers.openlibrary.org/b/isbn/"+isbn+"-M.jpg?default=false";
 }
+/* Procura uma capa melhor em segundo plano e encaixa na tela quando achar.
+   Não redesenha o formulário, para não apagar o que a pessoa já preencheu. */
+function trocarCapa(url){
+  var img=document.getElementById("capaLivro");
+  if(!img)return;
+  var teste=new Image();
+  teste.onload=function(){
+    if(S.tela!=="formulario")return;
+    S.form.capa=url;
+    img.src=url;
+    img.style.visibility="visible";
+  };
+  teste.src=url;
+}
+function buscarCapaEmSegundoPlano(isbn){
+  fetch("https://www.googleapis.com/books/v1/volumes?q=isbn:"+isbn)
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(S.form.isbn!==isbn)return;
+      var v=d.items&&d.items[0]&&d.items[0].volumeInfo;
+      var lk=v&&v.imageLinks;
+      if(lk){
+        var u=(lk.thumbnail||lk.smallThumbnail||"").replace("http://","https://");
+        if(u)trocarCapa(u.replace("&zoom=1","&zoom=2"));
+      }
+    })
+    .catch(function(){});
+}
 function aplicarDados(isbn,dados){
   S.carregando=false;
   S.form=formVazio(); S.form.isbn=isbn;
@@ -320,6 +349,8 @@ function aplicarDados(isbn,dados){
   S.form.capa=dados.capa||null;
   S.form.autoPreenchido=true;
   ir("formulario");
+  /* a tela já apareceu — agora procura uma capa melhor sem atrapalhar */
+  if(!dados.capaDefinitiva)buscarCapaEmSegundoPlano(isbn);
 }
 function buscarIsbn(isbn){
   isbn=String(isbn).replace(/[^0-9Xx]/g,"");
@@ -365,7 +396,8 @@ function buscarGoogle(isbn){
           autor:(v.authors||[]).join(", "),
           editora:v.publisher||"",
           ano:(v.publishedDate||"").substring(0,4),
-          capa:(v.imageLinks&&v.imageLinks.thumbnail)?v.imageLinks.thumbnail.replace("http://","https://"):capaReserva(isbn)
+          capa:(v.imageLinks&&v.imageLinks.thumbnail)?v.imageLinks.thumbnail.replace("http://","https://"):capaReserva(isbn),
+          capaDefinitiva:!!(v.imageLinks&&v.imageLinks.thumbnail)
         });
       }
       buscarOpenLibrary(isbn);
@@ -629,7 +661,7 @@ function render(){
     h=cabecalho(S.editando?"Editar livro":"Completar cadastro", S.editando?"historico":"scan");
     if(f.autoPreenchido && !S.editando){
       h+='<div class="livro" style="align-items:flex-start">'+
-        (f.capa?'<img class="capa" style="width:72px;height:100px" src="'+esc(f.capa)+'" alt="" onerror="this.style.visibility=\'hidden\'">':'<div class="capa" style="width:72px;height:100px"></div>')+
+        '<img id="capaLivro" class="capa" style="width:72px;height:100px" src="'+esc(f.capa||"")+'" alt="" onerror="this.style.visibility=\'hidden\'">'+
         '<div class="livro-info"><div class="display" style="font-size:17px;font-weight:700;color:var(--azul);white-space:normal">'+esc(f.titulo)+'</div>'+
         '<div class="a" style="white-space:normal">'+esc(f.autor)+'</div>'+
         '<div style="font-size:11px;color:var(--tinta-suave);margin-top:3px">'+esc(f.editora)+' · '+esc(f.ano)+'</div>'+
