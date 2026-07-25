@@ -101,17 +101,20 @@ var LOGO = "chapamaximapreto.jpg";
 var RM_DIGITOS = 5;
 var COORDENADORAS = ["11111", "22222", "33333"];
 /* Maíra = 11111 · Ana Clara = 22222 · Melissa = 33333 */
-var ARMARIOS = [
-  {codigo:"A1", categoria:"Literatura"},
-  {codigo:"A2", categoria:"Paradidáticos"},
-  {codigo:"B1", categoria:"PNLD"},
-  {codigo:"B2", categoria:"Dicionários"},
-  {codigo:"C1", categoria:"Vestibulares"},
-  {codigo:"C2", categoria:"Coleções"},
-  {codigo:"D1", categoria:"Revistas"},
-  {codigo:"D2", categoria:"Outros gêneros"}
+/* Armários iniciais — as coordenadoras podem renomear, criar e apagar
+   pelo próprio site, na tela Armários do painel. */
+var ARMARIOS_PADRAO = [
+  {id:"a1", codigo:"A1", nome:"Literatura", categorias:"Literatura", ordem:1},
+  {id:"a2", codigo:"A2", nome:"Paradidáticos", categorias:"Paradidáticos", ordem:2},
+  {id:"b1", codigo:"B1", nome:"PNLD", categorias:"PNLD", ordem:3},
+  {id:"b2", codigo:"B2", nome:"Dicionários", categorias:"Dicionários", ordem:4},
+  {id:"c1", codigo:"C1", nome:"Vestibulares", categorias:"Vestibulares", ordem:5},
+  {id:"c2", codigo:"C2", nome:"Coleções", categorias:"Coleções", ordem:6},
+  {id:"d1", codigo:"D1", nome:"Revistas", categorias:"Revistas", ordem:7},
+  {id:"d2", codigo:"D2", nome:"Outros", categorias:"Outros gêneros", ordem:8}
 ];
 var GENEROS = ["Literatura","Paradidáticos","Dicionários","Vestibulares","Coleções","Revistas","Outros gêneros"];
+var CATEGORIAS_TODAS = ["PNLD"].concat(GENEROS);
 var ESTADOS = ["Excelente","Bom","Regular","Ruim","Necessita reparo"];
 var SELOS = ["PNLD","Acervo da Biblioteca","Comum"];
 var COLECOES = [
@@ -120,8 +123,16 @@ var COLECOES = [
 ];
 /* ==================================================================== */
 
-var S = {tela:"login", user:null, livros:[], pendencias:[], logins:[], form:{}, erro:"",
-         busca:"", filtro:"Todos", editando:null, dup:null, msg:"", rmVisto:null, carregando:false, offline:false, ultimoIsbn:""};
+var S = {tela:"login", user:null, livros:[], pendencias:[], logins:[], armarios:[], form:{}, erro:"",
+         busca:"", filtro:"Todos", editando:null, dup:null, msg:"", rmVisto:null, carregando:false, offline:false, ultimoIsbn:"", msgArm:""};
+
+/* devolve todos os armários que aceitam a categoria informada */
+function armariosDe(cat){
+  if(!cat)return [];
+  return S.armarios.filter(function(a){
+    return (a.categorias||"").split(",").map(function(x){return x.trim();}).indexOf(cat)>=0;
+  });
+}
 
 /* ---------- BANCO DE DADOS ---------- */
 var db = null;
@@ -144,6 +155,10 @@ function carregar(){
     S.pendencias = JSON.parse(localStorage.getItem("cat_pend")||"[]");
     S.logins = JSON.parse(localStorage.getItem("cat_logins")||"[]");
   }catch(e){ S.livros=[]; S.pendencias=[]; S.logins=[]; }
+  try{
+    var arm=JSON.parse(localStorage.getItem("cat_armarios")||"null");
+    S.armarios = (arm&&arm.length)? arm : ARMARIOS_PADRAO.slice();
+  }catch(e){ S.armarios=ARMARIOS_PADRAO.slice(); }
   /* mantém a sessão se o celular bloquear ou a página recarregar */
   try{
     var u=JSON.parse(localStorage.getItem("cat_user")||"null");
@@ -215,11 +230,78 @@ function baixarTudo(forcar){
   db.from("logins").select("*").order("criado_em",{ascending:false}).limit(60).then(function(r){
     if(!r.error){S.logins=r.data||[];render();}
   });
+  db.from("armarios").select("*").order("ordem",{ascending:true}).then(function(r){
+    if(r.error)return;
+    if(!r.data||!r.data.length){
+      /* primeira vez: grava os armários iniciais no banco */
+      S.armarios=ARMARIOS_PADRAO.slice();
+      db.from("armarios").upsert(S.armarios).then(function(){});
+    }else{
+      S.armarios=r.data;
+    }
+    try{ localStorage.setItem("cat_armarios", JSON.stringify(S.armarios)); }catch(e){}
+    render();
+  });
+}
+function salvarArmarios(){
+  if(!S.user||S.user.papel!=="coordenador")return;
+  var lista=[];
+  for(var i=0;i<S.armarios.length;i++){
+    var a=S.armarios[i];
+    var cod=document.getElementById("arm_cod_"+a.id);
+    var nom=document.getElementById("arm_nom_"+a.id);
+    var cats=[];
+    for(var j=0;j<CATEGORIAS_TODAS.length;j++){
+      var chk=document.getElementById("arm_cat_"+a.id+"_"+j);
+      if(chk&&chk.checked)cats.push(CATEGORIAS_TODAS[j]);
+    }
+    lista.push({id:a.id, codigo:(cod?cod.value:a.codigo).trim().toUpperCase(),
+                nome:(nom?nom.value:a.nome).trim(), categorias:cats.join(","), ordem:i+1});
+  }
+  S.armarios=lista;
+  try{ localStorage.setItem("cat_armarios", JSON.stringify(lista)); }catch(e){}
+  if(db)db.from("armarios").upsert(lista).then(function(r){
+    if(r&&r.error){alert("Não foi possível salvar no banco. Verifique a internet.");}
+  });
+  S.msgArm="Armários salvos.";
+  render();
+}
+function novoArmario(){
+  if(!S.user||S.user.papel!=="coordenador")return;
+  salvarArmariosSilencioso();
+  S.armarios.push({id:"arm"+Date.now(), codigo:"", nome:"", categorias:"", ordem:S.armarios.length+1});
+  render();
+}
+function salvarArmariosSilencioso(){
+  for(var i=0;i<S.armarios.length;i++){
+    var a=S.armarios[i];
+    var cod=document.getElementById("arm_cod_"+a.id);
+    var nom=document.getElementById("arm_nom_"+a.id);
+    if(cod)a.codigo=cod.value.trim().toUpperCase();
+    if(nom)a.nome=nom.value.trim();
+    var cats=[];
+    for(var j=0;j<CATEGORIAS_TODAS.length;j++){
+      var chk=document.getElementById("arm_cat_"+a.id+"_"+j);
+      if(chk&&chk.checked)cats.push(CATEGORIAS_TODAS[j]);
+    }
+    if(document.getElementById("arm_cat_"+a.id+"_0"))a.categorias=cats.join(",");
+  }
+}
+function removerArmario(id){
+  if(!S.user||S.user.papel!=="coordenador")return;
+  var a=null;
+  for(var i=0;i<S.armarios.length;i++){if(S.armarios[i].id===id)a=S.armarios[i];}
+  if(!a)return;
+  if(!confirm("Remover o armário "+(a.codigo||"sem código")+"?\n\nOs livros já catalogados nele continuam registrados."))return;
+  salvarArmariosSilencioso();
+  S.armarios=S.armarios.filter(function(x){return x.id!==id;});
+  try{ localStorage.setItem("cat_armarios", JSON.stringify(S.armarios)); }catch(e){}
+  if(db)db.from("armarios").delete().eq("id",id).then(function(){});
+  render();
 }
 function esc(t){return String(t==null?"":t).replace(/[&<>"']/g,function(c){
   return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
-function armarioDe(cat){for(var i=0;i<ARMARIOS.length;i++){if(ARMARIOS[i].categoria===cat)return ARMARIOS[i];}return null;}
-function formVazio(){return {titulo:"",autor:"",editora:"",ano:"",isbn:null,capa:null,selo:"",categoria:"",duvida:false,estado:"",qtd:1,obs:"",autoPreenchido:false};}
+function formVazio(){return {titulo:"",autor:"",editora:"",ano:"",isbn:null,capa:null,selo:"",categoria:"",duvida:false,armario:"",estado:"",qtd:1,obs:"",autoPreenchido:false};}
 function meusLivros(){return S.livros.filter(function(l){return l.rm===S.user.rm;});}
 function pendAbertas(){return S.pendencias.filter(function(p){return !p.ok;});}
 function ir(t){
@@ -442,17 +524,24 @@ function setSelo(s){lerForm();S.form.selo=s;render();}
 function mudaQtd(n){lerForm();S.form.qtd=Math.max(1,(S.form.qtd||1)+n);render();}
 function atualizaForm(){lerForm();render();}
 
+function escolherArmario(cod){lerForm();S.form.armario=cod;render();}
 function salvarLivro(){
   lerForm();
   var f=S.form;
   var cat = f.selo==="PNLD" ? "PNLD" : f.categoria;
-  var arm = armarioDe(cat);
+  var opcoes = armariosDe(cat);
+  var arm = null;
+  if(opcoes.length===1) arm=opcoes[0];
+  else if(opcoes.length>1){
+    for(var oi=0;oi<opcoes.length;oi++){ if(opcoes[oi].codigo===f.armario) arm=opcoes[oi]; }
+  }
+  if(!arm)return;
   var orig=null;
   if(S.editando){for(var i=0;i<S.livros.length;i++){if(S.livros[i].id===S.editando)orig=S.livros[i];}}
   var novo={
     id: S.editando || f.isbn || ("m"+Date.now()),
     isbn: f.isbn||null, titulo:f.titulo, autor:f.autor, editora:f.editora, ano:f.ano,
-    capa:f.capa||null, selo:f.selo, categoria:cat, armario:arm?arm.codigo:"—",
+    capa:f.capa||null, selo:f.selo, categoria:cat, armario:arm.codigo,
     estado:f.estado, qtd:f.qtd||1, obs:f.obs,
     colecao: orig?orig.colecao:null,
     nome: orig?orig.nome:S.user.nome,
@@ -657,7 +746,6 @@ function render(){
   else if(S.tela==="formulario"){
     var f=S.form;
     var cat = f.selo==="PNLD" ? "PNLD" : f.categoria;
-    var arm = armarioDe(cat);
     h=cabecalho(S.editando?"Editar livro":"Completar cadastro", S.editando?"historico":"scan");
     if(f.autoPreenchido && !S.editando){
       h+='<div class="livro" style="align-items:flex-start">'+
@@ -684,7 +772,25 @@ function render(){
         '<label class="check"><input type="checkbox" id="f_duvida"'+(f.duvida?' checked':'')+'>'+
         'Não tenho certeza — marcar para um professor revisar</label>';
     }
-    if(arm){h+='<div style="margin-bottom:16px"><span class="tag'+(cat==="PNLD"?" tag-azul":"")+'">Vai para o Armário '+arm.codigo+' ('+arm.categoria+')</span></div>';}
+    var opcoes = armariosDe(cat);
+    var armEscolhido = null;
+    if(opcoes.length===1) armEscolhido=opcoes[0];
+    else if(opcoes.length>1){
+      for(var oi=0;oi<opcoes.length;oi++){ if(opcoes[oi].codigo===f.armario) armEscolhido=opcoes[oi]; }
+    }
+    if(cat && opcoes.length===0){
+      h+='<div class="aviso aviso-coral" style="font-size:13px">Nenhum armário está definido para <b>'+esc(cat)+'</b>. Avise uma coordenadora para cadastrar o armário.</div>';
+    }else if(opcoes.length===1){
+      h+='<div style="margin-bottom:16px"><span class="tag'+(cat==="PNLD"?" tag-azul":"")+'">Vai para o Armário '+esc(armEscolhido.codigo)+
+         (armEscolhido.nome?' · '+esc(armEscolhido.nome):'')+'</span></div>';
+    }else if(opcoes.length>1){
+      h+='<div class="campo"><label>Em qual armário este livro vai?</label>';
+      for(var op=0;op<opcoes.length;op++){
+        h+='<button class="selo-btn'+(f.armario===opcoes[op].codigo?' ativo':'')+'" onclick="escolherArmario(\''+esc(opcoes[op].codigo)+'\')">'+
+           esc(opcoes[op].codigo)+(opcoes[op].nome?' · '+esc(opcoes[op].nome):'')+'</button>';
+      }
+      h+='</div>';
+    }
     h+='<div class="campo"><label>Estado de conservação</label><select id="f_est" onchange="atualizaForm()"><option value="">Selecione</option>';
     for(var k=0;k<ESTADOS.length;k++){h+='<option'+(f.estado===ESTADOS[k]?' selected':'')+'>'+ESTADOS[k]+'</option>';}
     h+='</select></div>'+
@@ -694,9 +800,9 @@ function render(){
       '<b class="display" style="font-size:19px;color:var(--azul)">'+(f.qtd||1)+'</b>'+
       '<button class="icone-btn" onclick="mudaQtd(1)">+</button></div></div>'+
       '<div class="campo"><label>Observações (opcional)</label><textarea id="f_obs" rows="2">'+esc(f.obs)+'</textarea></div>';
-    var pronto = f.titulo && f.selo && (f.selo==="PNLD"||f.categoria) && f.estado;
+    var pronto = f.titulo && f.selo && (f.selo==="PNLD"||f.categoria) && f.estado && armEscolhido;
     h+='<button class="btn" onclick="salvarLivro()"'+(pronto?'':' disabled')+'>'+(S.editando?"Salvar alterações":"Salvar")+'</button>';
-    if(!pronto)h+='<p style="font-size:12px;color:var(--tinta-suave);text-align:center;margin-top:10px">Preencha carimbo, categoria e estado para salvar.</p>';
+    if(!pronto)h+='<p style="font-size:12px;color:var(--tinta-suave);text-align:center;margin-top:10px">Preencha carimbo, categoria, armário e estado para salvar.</p>';
   }
 
   else if(S.tela==="confirmado"){
@@ -738,6 +844,37 @@ function render(){
       '</div>';
   }
 
+  else if(S.tela==="armarios"){
+    h=cabecalho("Armários","painel")+
+      '<p style="font-size:13px;color:var(--tinta-suave);margin:-10px 0 18px">Defina o código, o nome e o que cada armário guarda. Vale para todos os celulares.</p>';
+    if(S.msgArm){h+='<div class="aviso aviso-azul" style="font-size:13px">'+esc(S.msgArm)+'</div>';S.msgArm="";}
+    for(var ai=0;ai<S.armarios.length;ai++){
+      var a=S.armarios[ai];
+      var minhas=(a.categorias||"").split(",").map(function(x){return x.trim();});
+      h+='<div class="card" style="padding:16px">'+
+        '<div style="display:flex;gap:8px;margin-bottom:10px">'+
+        '<div style="width:32%"><label>Código</label>'+
+        '<input id="arm_cod_'+a.id+'" value="'+esc(a.codigo)+'" placeholder="A1"></div>'+
+        '<div style="flex:1"><label>Nome</label>'+
+        '<input id="arm_nom_'+a.id+'" value="'+esc(a.nome||"")+'" placeholder="Língua Portuguesa"></div>'+
+        '</div><label>O que guarda</label><div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px">';
+      for(var ci=0;ci<CATEGORIAS_TODAS.length;ci++){
+        h+='<label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:var(--tinta);text-transform:none;letter-spacing:0;margin:0">'+
+           '<input type="checkbox" id="arm_cat_'+a.id+'_'+ci+'" style="width:17px;height:17px"'+
+           (minhas.indexOf(CATEGORIAS_TODAS[ci])>=0?' checked':'')+'>'+CATEGORIAS_TODAS[ci]+'</label>';
+      }
+      h+='</div><button class="btn btn-coral" style="padding:10px;font-size:13px" onclick="removerArmario(\''+a.id+'\')">Remover este armário</button></div>';
+    }
+    h+='<button class="btn btn-vazado" style="margin-bottom:10px" onclick="novoArmario()">Adicionar armário</button>'+
+       '<button class="btn" onclick="salvarArmarios()">Salvar armários</button>';
+    var semArm=[];
+    for(var ck=0;ck<CATEGORIAS_TODAS.length;ck++){
+      if(armariosDe(CATEGORIAS_TODAS[ck]).length===0)semArm.push(CATEGORIAS_TODAS[ck]);
+    }
+    if(semArm.length)h+='<div class="aviso aviso-amarelo" style="margin-top:16px;font-size:13px">Sem armário definido: <b>'+esc(semArm.join(", "))+'</b>. Livros dessas categorias não poderão ser salvos.</div>';
+    h+=rodape();
+  }
+
   else if(S.tela==="painel"){
     h=cabecalho("Painel da coordenação","home");
     var pa=pendAbertas();
@@ -775,7 +912,9 @@ function render(){
       h+='<div class="linha"><span>'+esc(S.logins[g].nome)+' <span style="font-weight:400;color:var(--tinta-suave)">· RM '+esc(S.logins[g].rm)+'</span></span>'+
         '<span style="font-weight:600;color:var(--tinta-suave)">'+esc(S.logins[g].hora)+'</span></div>';
     }
-    h+='<div style="margin-top:24px"><button class="btn btn-vazado" onclick="cadastroManual()">Cadastrar livro manualmente</button></div>'+
+    h+='<div class="secao-tit">Organização</div>'+
+      '<button class="btn btn-vazado" style="margin-bottom:10px" onclick="ir(\'armarios\')">Armários — definir códigos e o que cada um guarda</button>'+
+      '<button class="btn btn-vazado" onclick="cadastroManual()">Cadastrar livro manualmente</button>'+
       '<div class="secao-tit" style="color:var(--coral)">Antes do mutirão começar</div>'+
       '<p style="font-size:13px;color:var(--tinta-suave);margin:0 0 10px">Use para limpar os livros de teste. Depois que o mutirão começar, não use.</p>'+
       '<button class="btn btn-coral" onclick="zerarTudo()">Zerar catálogo</button>'+rodape();
