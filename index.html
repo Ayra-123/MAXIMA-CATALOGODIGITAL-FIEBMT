@@ -7,80 +7,169 @@
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --amarelo:#FFC933; --amarelo-esc:#F0AE00;
-  --azul:#16305C; --azul-med:#24478A; --azul-claro:#EAF0FA;
-  --tinta:#1B2340; --tinta-suave:#5A6480;
-  --creme:#FFFDF6; --card:#FFFFFF; --borda:#E4E8F2;
-  --verde:#2FAE72; --coral:#FF6B4A;
+  --amarelo:#FFC933; --amarelo-esc:#D99E00;
+  --azul:#16305C; --azul-esc:#0D1F3D; --azul-med:#24478A; --azul-claro:#EAF0FA;
+  --tinta:#1B2340; --tinta-suave:#6B7590;
+  --creme:#FFFDF6; --card:#FFFFFF; --borda:#DDE3EF; --borda-esc:#C3CCDE;
+  --verde:#2FAE72; --verde-esc:#1F8455;
+  --coral:#FF6B4A; --coral-esc:#D64A2B;
+  --dourado:#E8A917; --dourado-esc:#B8830F;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:var(--creme);font-family:'Inter',sans-serif;color:var(--tinta)}
-#app{max-width:480px;margin:0 auto;padding:24px 20px 40px;min-height:100vh}
+#app{max-width:480px;margin:0 auto;padding:22px 18px 44px;min-height:100vh}
 h1,h2,.display{font-family:'Baloo 2',sans-serif;margin:0}
 .center{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:82vh;text-align:center}
-.logo{width:130px;height:130px;object-fit:contain;margin-bottom:14px}
-.logo-sm{width:48px;height:48px;object-fit:contain;border-radius:50%}
-label{display:block;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--tinta-suave);margin:0 0 6px}
-input,select,textarea{width:100%;padding:13px 15px;font-size:16px;font-family:'Inter',sans-serif;border:2px solid var(--borda);border-radius:12px;background:#fff;outline:none;color:var(--tinta)}
+
+label{display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--tinta-suave);margin:0 0 7px}
+input,select,textarea{width:100%;padding:14px 15px;font-size:16px;font-family:'Inter',sans-serif;font-weight:500;
+  border:2px solid var(--borda);border-radius:14px;background:#fff;outline:none;color:var(--tinta)}
 input:focus,select:focus,textarea:focus{border-color:var(--azul-med)}
 .campo{margin-bottom:16px;text-align:left}
 button{font-family:'Inter',sans-serif;cursor:pointer;border:none}
-.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:16px;font-size:16px;font-weight:700;border-radius:16px;background:var(--amarelo);color:var(--azul)}
-.btn:active{transform:scale(.98)}
-.btn:disabled{opacity:.45;cursor:not-allowed}
-.btn-escuro{background:var(--azul);color:var(--amarelo)}
-.btn-vazado{background:#fff;color:var(--azul);border:2px solid var(--azul-med)}
-.btn-coral{background:var(--coral);color:#fff}
-.link{display:block;width:100%;background:none;font-size:13px;font-weight:600;color:var(--azul-med);text-decoration:underline;margin-top:14px;padding:6px}
-.card{background:var(--card);border:2px solid var(--borda);border-radius:20px;padding:20px;margin-bottom:12px;width:100%;text-align:left;display:block}
+
+/* botoes com relevo, estilo jogo */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px;
+  font-size:15px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;
+  border-radius:16px;background:var(--amarelo);color:var(--azul);
+  box-shadow:0 4px 0 var(--amarelo-esc);transition:transform .06s,box-shadow .06s}
+.btn:active{transform:translateY(4px);box-shadow:0 0 0 var(--amarelo-esc)}
+.btn:disabled{opacity:.45;box-shadow:0 4px 0 var(--amarelo-esc);transform:none;cursor:not-allowed}
+.btn-escuro{background:var(--azul);color:var(--amarelo);box-shadow:0 4px 0 var(--azul-esc)}
+.btn-escuro:active{box-shadow:0 0 0 var(--azul-esc)}
+.btn-vazado{background:#fff;color:var(--azul);border:2px solid var(--borda-esc);box-shadow:0 4px 0 var(--borda-esc)}
+.btn-vazado:active{box-shadow:0 0 0 var(--borda-esc)}
+.btn-coral{background:var(--coral);color:#fff;box-shadow:0 4px 0 var(--coral-esc)}
+.btn-coral:active{box-shadow:0 0 0 var(--coral-esc)}
+.btn-verde{background:var(--verde);color:#fff;box-shadow:0 4px 0 var(--verde-esc)}
+.btn-verde:active{box-shadow:0 0 0 var(--verde-esc)}
+.link{display:block;width:100%;background:none;font-size:13px;font-weight:700;color:var(--azul-med);
+  text-decoration:underline;margin-top:16px;padding:8px}
+
+/* cartoes com relevo */
+.card{background:var(--card);border:2px solid var(--borda);border-bottom-width:5px;border-radius:20px;
+  padding:18px;margin-bottom:12px;width:100%;text-align:left;display:block;transition:transform .06s}
+.card:active{transform:translateY(3px)}
 .card-amarelo{background:var(--amarelo);border-color:var(--amarelo-esc)}
-.card-azul{background:var(--azul);border-color:var(--azul);color:var(--amarelo)}
-.card h2{font-size:18px;margin:8px 0 2px;color:var(--azul)}
+.card-azul{background:var(--azul);border-color:var(--azul-esc)}
+.card-ranking{background:linear-gradient(135deg,#1D3D72 0%,#16305C 60%);border-color:var(--azul-esc)}
+.card h2{font-size:19px;margin:0;color:var(--azul);display:flex;align-items:center;gap:9px}
 .card-amarelo h2{color:var(--azul)}
-.card-azul h2{color:var(--amarelo)}
-.card p{margin:0;font-size:13px;color:var(--tinta-suave)}
+.card-azul h2,.card-ranking h2{color:var(--amarelo)}
+.card p{margin:3px 0 0 34px;font-size:13px;font-weight:500;color:var(--tinta-suave)}
 .card-amarelo p{color:rgba(22,48,92,.8)}
-.card-azul p{color:#B9C7E0}
+.card-azul p,.card-ranking p{color:rgba(255,255,255,.78)}
+.emoji{font-size:23px;line-height:1}
+
 .topo{display:flex;align-items:center;gap:10px;margin-bottom:20px}
-.topo h1{font-size:21px;flex:1;color:var(--azul)}
-.voltar{background:#fff;border:1.5px solid var(--borda);border-radius:50%;width:38px;height:38px;font-size:20px;line-height:1;color:var(--azul)}
-.selo-btn{width:100%;padding:15px;margin-bottom:8px;text-align:left;font-size:15px;font-weight:700;border-radius:12px;background:#fff;border:2px solid var(--borda);color:var(--tinta)}
-.selo-btn.ativo{background:var(--azul);border-color:var(--azul);color:var(--amarelo)}
-.tag{display:inline-block;font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;background:var(--azul-claro);color:var(--azul);margin-right:6px}
+.topo h1{font-size:22px;flex:1;color:var(--azul)}
+.voltar{background:#fff;border:2px solid var(--borda);border-bottom-width:4px;border-radius:14px;
+  width:42px;height:42px;font-size:20px;line-height:1;color:var(--azul);font-weight:800}
+.voltar:active{transform:translateY(2px);border-bottom-width:2px}
+
+.selo-btn{width:100%;padding:16px;margin-bottom:9px;text-align:left;font-size:15px;font-weight:700;
+  border-radius:14px;background:#fff;border:2px solid var(--borda);border-bottom-width:4px;color:var(--tinta)}
+.selo-btn:active{transform:translateY(2px);border-bottom-width:2px}
+.selo-btn.ativo{background:var(--azul);border-color:var(--azul-esc);color:#fff}
+
+.tag{display:inline-block;font-size:11px;font-weight:800;padding:5px 11px;border-radius:999px;
+  background:var(--azul-claro);color:var(--azul);margin:0 6px 4px 0}
 .tag-azul{background:var(--azul);color:var(--amarelo)}
 .tag-amarela{background:var(--amarelo);color:var(--azul)}
-.aviso{border-radius:16px;padding:14px;margin-bottom:18px;font-size:14px;font-weight:500;line-height:1.5}
-.aviso-coral{background:#FFE9E1;border:1.5px solid var(--coral)}
-.aviso-amarelo{background:#FFF6DE;border:1.5px solid var(--amarelo-esc)}
-.aviso-azul{background:var(--azul-claro);border:1.5px solid var(--azul-med)}
-.livro{display:flex;gap:12px;align-items:center;background:#fff;border:2px solid var(--borda);border-radius:16px;padding:12px;margin-bottom:10px}
-.capa{width:52px;height:74px;object-fit:cover;border-radius:8px;flex-shrink:0;background:var(--azul-claro);
-  border:1px solid var(--borda)}
+
+.aviso{border-radius:16px;padding:15px;margin-bottom:18px;font-size:14px;font-weight:500;line-height:1.5;
+  border-width:2px;border-style:solid;border-bottom-width:4px}
+.aviso-coral{background:#FFE9E1;border-color:var(--coral)}
+.aviso-amarelo{background:#FFF6DE;border-color:var(--amarelo-esc)}
+.aviso-azul{background:var(--azul-claro);border-color:var(--azul-med)}
+
+/* cartao grande do livro encontrado */
+.livro-destaque{display:flex;gap:16px;background:#fff;border:2px solid var(--borda);border-bottom-width:5px;
+  border-radius:20px;padding:16px;margin-bottom:18px;align-items:flex-start}
+.capa-gg{width:104px;height:150px;object-fit:cover;border-radius:12px;flex-shrink:0;
+  background:var(--azul-claro);border:2px solid var(--borda)}
+.livro-destaque .tit{font-family:'Baloo 2',sans-serif;font-weight:800;font-size:19px;line-height:1.2;color:var(--azul)}
+.livro-destaque .aut{font-size:14px;font-weight:600;color:var(--tinta);margin-top:4px}
+.livro-destaque .det{font-size:13px;font-weight:500;color:var(--tinta-suave);margin-top:8px;line-height:1.5}
+.livro-destaque .fonte{font-size:11px;font-weight:800;color:var(--verde);margin-top:9px;text-transform:uppercase;letter-spacing:.04em}
+
+.livro{display:flex;gap:12px;align-items:center;background:#fff;border:2px solid var(--borda);
+  border-bottom-width:4px;border-radius:16px;padding:12px;margin-bottom:10px}
+.capa{width:56px;height:80px;object-fit:cover;border-radius:9px;flex-shrink:0;
+  background:var(--azul-claro);border:1px solid var(--borda)}
 .livro-info{flex:1;min-width:0}
-.livro-info .t{font-family:'Baloo 2',sans-serif;font-weight:700;font-size:15px;line-height:1.2;color:var(--azul);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.livro-info .a{font-size:12px;color:var(--tinta-suave);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.icone-btn{background:var(--azul-claro);border:1.5px solid var(--borda);border-radius:50%;width:36px;height:36px;flex-shrink:0;font-size:15px;color:var(--azul)}
+.livro-info .t{font-family:'Baloo 2',sans-serif;font-weight:700;font-size:15px;line-height:1.25;color:var(--azul)}
+.livro-info .a{font-size:12px;font-weight:500;color:var(--tinta-suave);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.icone-btn{background:var(--azul-claro);border:2px solid var(--borda);border-bottom-width:4px;border-radius:12px;
+  width:40px;height:40px;flex-shrink:0;font-size:16px;color:var(--azul)}
+.icone-btn:active{transform:translateY(2px);border-bottom-width:2px}
 .lixeira{background:#FFE9E1;border-color:#FFC7B7;color:var(--coral)}
-.linha{display:flex;justify-content:space-between;align-items:center;background:#fff;border:1.5px solid var(--borda);border-radius:12px;padding:11px 14px;margin-bottom:6px;width:100%;font-size:14px;font-weight:600;text-align:left;color:var(--tinta)}
-.secao-tit{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--azul-med);margin:26px 0 10px}
+
+.linha{display:flex;justify-content:space-between;align-items:center;background:#fff;border:2px solid var(--borda);
+  border-bottom-width:4px;border-radius:14px;padding:13px 15px;margin-bottom:8px;width:100%;
+  font-size:14px;font-weight:700;text-align:left;color:var(--tinta)}
+.linha:active{transform:translateY(2px);border-bottom-width:2px}
+.podio1{background:#FFF8E3;border-color:var(--amarelo-esc)}
+.podio2{background:#F2F4F8;border-color:var(--borda-esc)}
+.podio3{background:#FBEFE6;border-color:#D9A87E}
+.medalha{font-size:19px;margin-right:8px}
+
+.secao-tit{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--azul-med);margin:28px 0 11px}
 .chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:14px}
-.chip{flex-shrink:0;font-size:12px;font-weight:600;padding:8px 14px;border-radius:999px;background:#fff;border:1.5px solid var(--borda);color:var(--tinta-suave)}
-.chip.ativo{background:var(--azul);border-color:var(--azul);color:var(--amarelo)}
-.erro{color:var(--coral);font-size:13px;font-weight:600;margin:-8px 0 12px;text-align:left}
-.contagem{display:flex;justify-content:space-between;align-items:center;background:var(--azul);border-radius:16px;padding:14px 18px;margin-bottom:22px}
-.contagem span{color:#B9C7E0;font-weight:600;font-size:14px}
-.contagem b{color:var(--amarelo);font-family:'Baloo 2',sans-serif;font-size:22px}
-#leitor{width:100%;border-radius:20px;overflow:hidden;background:var(--azul);margin-bottom:14px}
+.chip{flex-shrink:0;font-size:12px;font-weight:700;padding:9px 15px;border-radius:999px;background:#fff;
+  border:2px solid var(--borda);color:var(--tinta-suave)}
+.chip.ativo{background:var(--azul);border-color:var(--azul-esc);color:var(--amarelo)}
+.erro{color:var(--coral);font-size:13px;font-weight:700;margin:-8px 0 12px;text-align:left}
+
+.contagem{display:flex;justify-content:space-between;align-items:center;background:var(--azul);
+  border-radius:18px;border-bottom:5px solid var(--azul-esc);padding:16px 20px;margin-bottom:20px}
+.contagem span{color:#B9C7E0;font-weight:700;font-size:14px}
+.contagem b{color:var(--amarelo);font-family:'Baloo 2',sans-serif;font-size:26px}
+
+.barra{height:12px;background:var(--borda);border-radius:999px;overflow:hidden;margin-top:10px}
+.barra i{display:block;height:100%;background:var(--amarelo);border-radius:999px}
+
 .visor{position:relative}
-.flash-btn{position:absolute;top:12px;right:12px;z-index:5;width:46px;height:46px;border-radius:50%;
-  background:rgba(255,255,255,.92);border:2px solid rgba(22,48,92,.15);font-size:21px;line-height:1;
-  display:none;align-items:center;justify-content:center;color:var(--azul)}
+#leitor{width:100%;border-radius:20px;overflow:hidden;background:var(--azul);margin-bottom:14px}
+.flash-btn{position:absolute;top:12px;right:12px;z-index:5;width:48px;height:48px;border-radius:14px;
+  background:rgba(255,255,255,.94);border:2px solid rgba(22,48,92,.15);border-bottom-width:4px;font-size:21px;
+  line-height:1;display:none;align-items:center;justify-content:center;color:var(--azul)}
 .flash-btn.ativo{background:var(--amarelo);border-color:var(--amarelo-esc)}
-.vazio{text-align:center;color:var(--tinta-suave);font-size:14px;padding:32px 0}
-.check{display:flex;align-items:center;gap:9px;margin:-6px 0 16px;font-size:13px;font-weight:600;color:var(--tinta-suave);text-align:left}
-.check input{width:18px;height:18px;flex-shrink:0}
-.ok{width:72px;height:72px;border-radius:50%;background:var(--verde);color:#fff;font-size:36px;display:flex;align-items:center;justify-content:center;margin-bottom:18px}
-.rodape{text-align:center;font-size:11px;color:var(--tinta-suave);margin-top:28px;padding-top:16px;border-top:1px solid var(--borda)}
+
+.vazio{text-align:center;color:var(--tinta-suave);font-size:14px;font-weight:500;padding:34px 0}
+.check{display:flex;align-items:center;gap:10px;margin:-4px 0 16px;font-size:13px;font-weight:700;
+  color:var(--tinta-suave);text-align:left}
+.check input{width:20px;height:20px;flex-shrink:0}
+.ok{width:84px;height:84px;border-radius:50%;background:var(--verde);color:#fff;font-size:42px;
+  display:flex;align-items:center;justify-content:center;margin-bottom:18px;border-bottom:5px solid var(--verde-esc)}
+.rodape{text-align:center;font-size:11px;font-weight:600;color:var(--tinta-suave);margin-top:30px;
+  padding-top:16px;border-top:2px solid var(--borda)}
+
+/* ---- elementos visuais da identidade do Grêmio ---- */
+.ceu{position:relative}
+.ceu .est{position:absolute;color:var(--amarelo);opacity:.5;pointer-events:none;line-height:1;
+  text-shadow:0 0 8px rgba(255,201,51,.5)}
+.num{position:absolute;top:14px;right:18px;font-family:'Baloo 2',sans-serif;font-weight:800;
+  font-size:15px;letter-spacing:.06em;opacity:.32}
+.card{position:relative}
+.card .num{color:var(--azul)}
+.card-azul .num,.card-ranking .num{color:var(--amarelo);opacity:.45}
+.card-amarelo .num{color:var(--azul);opacity:.4}
+.secao-tit::before{content:"\2605";margin-right:7px;color:var(--amarelo);font-size:13px}
+.faixa{height:5px;border-radius:999px;margin:0 0 22px;
+  background:linear-gradient(90deg,var(--amarelo) 0%,var(--dourado) 45%,var(--azul-med) 45%,var(--azul) 100%)}
+.brasao{position:relative;display:inline-block}
+.brasao::after{content:"\2605";position:absolute;top:-4px;right:-6px;font-size:20px;color:var(--amarelo);
+  text-shadow:0 1px 3px rgba(0,0,0,.25)}
+.logo{width:132px;height:132px;object-fit:contain;margin-bottom:14px;border-radius:26px;
+  background:#fff;border:3px solid var(--borda);box-shadow:0 5px 0 var(--borda-esc)}
+.logo-sm{width:46px;height:46px;object-fit:contain;border-radius:14px;background:#fff;
+  border:2px solid var(--borda)}
+.contagem{position:relative;overflow:hidden}
+.contagem::after{content:"\2605\2605\2605";position:absolute;right:-6px;top:-10px;font-size:34px;
+  color:rgba(255,201,51,.13);letter-spacing:-6px}
 </style>
 </head>
 <body>
@@ -97,6 +186,7 @@ var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 /* Enquanto a chave não for colada, o site funciona guardando os dados
    apenas no próprio celular. Com a chave, todos passam a ver o mesmo acervo. */
 
+var SEM_CAPA = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
 var LOGO = "chapamaximapreto.jpg";
 var RM_DIGITOS = 5;
 var COORDENADORAS = ["11111", "22222", "33333"];
@@ -124,7 +214,7 @@ var COLECOES = [
 /* ==================================================================== */
 
 var S = {tela:"login", user:null, livros:[], pendencias:[], logins:[], armarios:[], form:{}, erro:"",
-         busca:"", filtro:"Todos", editando:null, dup:null, msg:"", rmVisto:null, carregando:false, offline:false, ultimoIsbn:"", msgArm:""};
+         busca:"", filtro:"Todos", editando:null, dup:null, msg:"", rmVisto:null, carregando:false, offline:false, ultimoIsbn:"", msgArm:"", verTodasEntradas:false};
 
 /* devolve todos os armários que aceitam a categoria informada */
 function armariosDe(cat){
@@ -175,8 +265,14 @@ function fila(){
 function gravarFila(f){
   try{ localStorage.setItem("cat_fila", JSON.stringify(f)); }catch(e){}
 }
+function presos(){
+  try{ return JSON.parse(localStorage.getItem("cat_presos")||"[]"); }catch(e){ return []; }
+}
+function gravarPresos(p){
+  try{ localStorage.setItem("cat_presos", JSON.stringify(p)); }catch(e){}
+}
 function enfileirar(tipo,dado){
-  var f=fila(); f.push({tipo:tipo,dado:dado}); gravarFila(f);
+  var f=fila(); f.push({tipo:tipo,dado:dado,recusas:0}); gravarFila(f);
 }
 var enviando=false;
 function processarFila(){
@@ -193,12 +289,41 @@ function processarFila(){
          :                           db.from("logins").insert(item.dado);
   op.then(function(r){
     enviando=false;
-    if(r&&r.error){ S.offline=true; render(); return; }
-    var g=fila(); g.shift(); gravarFila(g);
+    var g=fila();
+    if(r&&r.error){
+      /* o banco respondeu e recusou este item: o problema é ele, não a internet.
+         depois de 3 recusas, tira da frente para não travar os outros. */
+      if(g.length){
+        g[0].recusas=(g[0].recusas||0)+1;
+        g[0].erro=r.error.message||"recusado pelo banco";
+        if(g[0].recusas>=3){
+          var p=presos(); p.push(g.shift()); gravarPresos(p); gravarFila(g);
+          S.offline=true; render(); processarFila(); return;
+        }
+        gravarFila(g);
+      }
+      S.offline=true; render(); return;
+    }
+    g.shift(); gravarFila(g);
     processarFila();
   }).catch(function(){
+    /* nem chegou ao servidor: é internet. não conta como recusa do item. */
     enviando=false; S.offline=true; render();
   });
+}
+function tentarPresosDeNovo(){
+  var p=presos();
+  if(!p.length)return;
+  var f=fila();
+  for(var i=0;i<p.length;i++){ p[i].recusas=0; f.push(p[i]); }
+  gravarFila(f); gravarPresos([]);
+  processarFila(); render();
+}
+function descartarPresos(){
+  var p=presos();
+  if(!p.length)return;
+  if(!confirm("Descartar "+p.length+" cadastro(s) que o banco recusou?\n\nEles não vão para o catálogo. Os livros terão que ser escaneados de novo."))return;
+  gravarPresos([]); render();
 }
 function enviarLivro(l){ enfileirar("livro",l); processarFila(); }
 function enviarPendencia(p){ enfileirar("pendencia",p); processarFila(); }
@@ -404,6 +529,7 @@ function trocarCapa(url){
     S.form.capa=url;
     img.src=url;
     img.style.visibility="visible";
+    img.style.display="block";
   };
   teste.src=url;
 }
@@ -456,7 +582,8 @@ function buscarBrasilAPI(isbn){
           autor:(d.authors||[]).join(", "),
           editora:d.publisher||"",
           ano:d.year?String(d.year):"",
-          capa:d.cover_url||capaReserva(isbn)
+          capa:d.cover_url||capaReserva(isbn),
+          capaDefinitiva:!!d.cover_url
         });
       }
       buscarGoogle(isbn);
@@ -524,6 +651,88 @@ function setSelo(s){lerForm();S.form.selo=s;render();}
 function mudaQtd(n){lerForm();S.form.qtd=Math.max(1,(S.form.qtd||1)+n);render();}
 function atualizaForm(){lerForm();render();}
 
+function abrirCameraCapa(){
+  var inp=document.getElementById("arqCapa");
+  if(inp)inp.click();
+}
+function fotoEscolhida(input){
+  var arq=input.files&&input.files[0];
+  if(!arq)return;
+  if(!db){alert("Precisa de internet para enviar a foto.");return;}
+  var aviso=document.getElementById("statusCapa");
+  if(aviso)aviso.textContent="Preparando a foto…";
+  var leitor2=new FileReader();
+  leitor2.onload=function(ev){
+    var img=new Image();
+    img.onload=function(){
+      /* reduz para no máximo 700px — foto de celular tem 4000px e pesaria demais */
+      var max=700, w=img.width, h=img.height;
+      if(w>h && w>max){ h=Math.round(h*max/w); w=max; }
+      else if(h>max){ w=Math.round(w*max/h); h=max; }
+      var cv=document.createElement("canvas");
+      cv.width=w; cv.height=h;
+      cv.getContext("2d").drawImage(img,0,0,w,h);
+      cv.toBlob(function(blob){
+        if(!blob){ if(aviso)aviso.textContent="Não consegui preparar a foto."; return; }
+        if(aviso)aviso.textContent="Enviando…";
+        var nome="capa_"+(S.form.isbn||"m")+"_"+Date.now()+".jpg";
+        db.storage.from("capas").upload(nome,blob,{contentType:"image/jpeg",upsert:true}).then(function(r){
+          if(r.error){
+            if(aviso)aviso.textContent="Não consegui enviar. Tente de novo.";
+            return;
+          }
+          var pub=db.storage.from("capas").getPublicUrl(nome);
+          var url=pub&&pub.data?pub.data.publicUrl:null;
+          if(!url){ if(aviso)aviso.textContent="Não consegui gerar o endereço da foto."; return; }
+          S.form.capa=url;
+          var el=document.getElementById("capaLivro");
+          if(el){ el.src=url; el.style.visibility="visible"; el.style.display="block"; }
+          if(aviso)aviso.textContent="Foto adicionada!";
+        });
+      },"image/jpeg",0.72);
+    };
+    img.onerror=function(){ if(aviso)aviso.textContent="Arquivo de imagem inválido."; };
+    img.src=ev.target.result;
+  };
+  leitor2.readAsDataURL(arq);
+}
+function estrelas(){
+  var pos=[
+    {t:"6%", l:"8%",  s:13, o:.45},
+    {t:"3%", l:"78%", s:19, o:.55},
+    {t:"17%",l:"90%", s:10, o:.35},
+    {t:"12%",l:"26%", s:9,  o:.30},
+    {t:"26%",l:"4%",  s:15, o:.40},
+    {t:"70%",l:"93%", s:12, o:.30},
+    {t:"84%",l:"7%",  s:16, o:.35},
+    {t:"92%",l:"70%", s:10, o:.28}
+  ];
+  var h='';
+  for(var i=0;i<pos.length;i++){
+    h+='<span class="est" style="top:'+pos[i].t+';left:'+pos[i].l+';font-size:'+pos[i].s+'px;opacity:'+pos[i].o+'">&#9733;</span>';
+  }
+  return h;
+}
+function calcularRanking(){
+  var mapa={};
+  S.livros.forEach(function(l){
+    if(!mapa[l.rm])mapa[l.rm]={nome:l.nome,rm:l.rm,total:0};
+    mapa[l.rm].total++;
+  });
+  return Object.keys(mapa).map(function(k){return mapa[k];})
+    .sort(function(a,b){return b.total-a.total;});
+}
+function linhaRanking(r,i,clicavel){
+  var med=["&#129351;","&#129352;","&#129353;"][i]||"";
+  var cls="linha"+(i<3?" podio"+(i+1):"");
+  var eu = S.user && r.rm===S.user.rm;
+  var conteudo='<span>'+(med?'<span class="medalha">'+med+'</span>':'<span class="medalha">'+(i+1)+'</span>')+
+    esc(r.nome)+(eu?' <b style="color:var(--azul-med)">(você)</b>':'')+'</span>'+
+    '<span style="color:var(--azul-med)">'+r.total+(clicavel?' &#8250;':'')+'</span>';
+  return clicavel
+    ? '<button class="'+cls+'" onclick="verHistorico(\''+r.rm+'\')">'+conteudo+'</button>'
+    : '<div class="'+cls+'">'+conteudo+'</div>';
+}
 function escolherArmario(cod){lerForm();S.form.armario=cod;render();}
 function salvarLivro(){
   lerForm();
@@ -581,7 +790,7 @@ function editar(id){
   if(!l)return;
   S.editando=id;
   S.form={titulo:l.titulo,autor:l.autor,editora:l.editora,ano:l.ano,isbn:l.isbn,capa:l.capa,
-          selo:l.selo||"Acervo da Biblioteca",categoria:l.categoria,duvida:false,
+          selo:l.selo||"Acervo da Biblioteca",categoria:l.categoria,duvida:false,armario:l.armario||"",
           estado:l.estado,qtd:l.qtd,obs:l.obs,autoPreenchido:!!l.capa};
   ir("formulario");
 }
@@ -627,6 +836,7 @@ function zerarTudo(){
   if(!confirm("Tem certeza? Não dá para desfazer."))return;
   S.livros=[];S.pendencias=[];S.logins=[];
   gravarFila([]);
+  gravarPresos([]);
   if(db){
     db.from("livros").delete().neq("id","").then(function(){});
     db.from("pendencias").delete().neq("id","").then(function(){});
@@ -650,7 +860,7 @@ function cabecalho(titulo,voltarPara){
 }
 function cardLivro(l,comEditar){
   return '<div class="livro">'+
-    (l.capa?'<img class="capa" src="'+esc(l.capa)+'" alt="" onerror="this.style.visibility=\'hidden\'">':'<div class="capa"></div>')+
+    (l.capa?'<img class="capa" loading="lazy" src="'+esc(l.capa)+'" alt="" onerror="this.style.visibility=\'hidden\'">':'<div class="capa"></div>')+
     '<div class="livro-info"><div class="t">'+esc(l.titulo)+'</div>'+
     '<div class="a">'+esc(l.autor||"")+'</div>'+
     '<div style="margin-top:6px"><span class="tag'+(l.categoria==="PNLD"?" tag-azul":"")+'">'+esc(l.categoria)+'</span>'+
@@ -671,9 +881,11 @@ function render(){
   if(S.tela!=="scan")pararLeitor();
 
   if(S.tela==="login"){
-    h='<div class="center"><img class="logo" src="'+LOGO+'" alt="" onerror="this.style.display=\'none\'">'+
-      '<h1 style="font-size:25px;color:var(--azul)">Catálogo da Biblioteca</h1>'+
-      '<p style="font-size:13px;color:var(--tinta-suave);margin:4px 0 26px">Grêmio Estudantil Máxima · Mutirão de catalogação 2026</p>'+
+    h='<div class="center ceu">'+estrelas()+
+      '<div class="brasao"><img class="logo" src="'+LOGO+'" alt="" onerror="this.style.display=\'none\'"></div>'+
+      '<h1 style="font-size:26px;color:var(--azul);margin-top:14px">Catálogo da Biblioteca</h1>'+
+      '<p style="font-size:13px;font-weight:600;color:var(--tinta-suave);margin:6px 0 8px">Grêmio Estudantil Máxima · Mutirão 2026</p>'+
+      '<div class="faixa" style="width:120px"></div>'+
       '<div style="width:100%">'+
       '<div class="campo"><label>Seu nome</label><input id="nome" placeholder="Ex: Maria Silva" autocomplete="name"></div>'+
       '<div class="campo"><label>RM</label><input id="rm" inputmode="numeric" maxlength="'+RM_DIGITOS+'" placeholder="Somente os '+RM_DIGITOS+' números"></div>'+
@@ -683,23 +895,35 @@ function render(){
   }
 
   else if(S.tela==="home"){
-    h='<div class="topo"><img class="logo-sm" src="'+LOGO+'" alt="" onerror="this.style.display=\'none\'">'+
-      '<div style="flex:1"><p style="font-size:12px;color:var(--tinta-suave);margin:0">Bem-vindo(a),</p>'+
-      '<div class="display" style="font-size:18px;font-weight:700;color:var(--azul)">'+esc(S.user.nome.split(" ")[0])+'</div></div>'+
+    h='<div class="ceu">'+estrelas()+
+      '<div class="topo"><img class="logo-sm" src="'+LOGO+'" alt="" onerror="this.style.display=\'none\'">'+
+      '<div style="flex:1"><p style="font-size:12px;font-weight:600;color:var(--tinta-suave);margin:0">Bem-vindo(a),</p>'+
+      '<div class="display" style="font-size:19px;font-weight:800;color:var(--azul)">'+esc(S.user.nome.split(" ")[0])+'</div></div>'+
       (S.user.papel==="coordenador"?'<span class="tag tag-azul">Coordenadora</span>':'')+'</div>'+
+      '<div class="faixa"></div>'+
       (!db?'<div class="aviso aviso-amarelo" style="font-size:13px">Modo local: os livros ficam salvos só neste celular. Configure a chave do banco para compartilhar com a equipe.</div>':'')+
-      (db&&S.offline?'<div class="aviso aviso-coral" style="font-size:13px"><b>'+fila().length+' cadastro(s) esperando envio.</b><br>Nada foi perdido — assim que a internet voltar, eles vão sozinhos para o banco. Pode continuar catalogando.</div>':'')+
+      (db&&S.offline&&fila().length?'<div class="aviso aviso-amarelo" style="font-size:13px"><b>'+fila().length+' cadastro(s) esperando envio.</b><br>Nada foi perdido — assim que a internet voltar, eles vão sozinhos para o banco. Pode continuar catalogando.</div>':'')+
+      (db&&presos().length?'<div class="aviso aviso-coral" style="font-size:13px"><b>'+presos().length+' cadastro(s) recusados pelo banco.</b><br>Não é falta de internet. Mostre esta tela a uma coordenadora.'+
+        (S.user.papel==="coordenador"?'<div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-escuro" style="padding:10px;font-size:12px" onclick="tentarPresosDeNovo()">Tentar de novo</button><button class="btn btn-coral" style="padding:10px;font-size:12px" onclick="descartarPresos()">Descartar</button></div>':'')+
+        '</div>':'')+
       '<div class="contagem"><span>Catalogados por você</span><b>'+meusLivros().length+'</b></div>'+
-      '<button class="card card-amarelo" onclick="ir(\'scan\')"><h2>Escanear livro</h2>'+
+      '<button class="card card-amarelo" onclick="ir(\'scan\')"><span class="num">01</span>'+
+      '<h2><span class="emoji">&#128248;</span>Escanear livro</h2>'+
       '<p>Aponte a câmera para o código de barras</p></button>'+
-      '<button class="card" onclick="ir(\'historico\')"><h2>Meu histórico</h2>'+
+      '<button class="card" onclick="ir(\'historico\')"><span class="num">02</span>'+
+      '<h2><span class="emoji">&#128214;</span>Meu histórico</h2>'+
       '<p>'+meusLivros().length+' livros · conferir e editar</p></button>'+
-      '<button class="card" onclick="ir(\'acervo\')"><h2>Acervo catalogado</h2>'+
+      '<button class="card" onclick="ir(\'acervo\')"><span class="num">03</span>'+
+      '<h2><span class="emoji">&#128218;</span>Acervo catalogado</h2>'+
       '<p>'+S.livros.length+' livros no total · buscar e filtrar</p></button>'+
+      '<button class="card card-ranking" onclick="ir(\'ranking\')"><span class="num">04</span>'+
+      '<h2><span class="emoji">&#127942;</span>Ranking</h2>'+
+      '<p>Veja quem mais catalogou hoje</p></button>'+
       (S.user.papel==="coordenador"?
-      '<button class="card card-azul" onclick="ir(\'painel\')"><h2>Painel da coordenação</h2>'+
+      '<button class="card card-azul" onclick="ir(\'painel\')"><span class="num">05</span>'+
+      '<h2><span class="emoji">&#128737;</span>Painel da coordenação</h2>'+
       '<p>'+pendAbertas().length+' pendência(s) · '+S.logins.length+' entradas</p></button>':'')+
-      '<button class="link" onclick="sair()">Sair</button>'+rodape();
+      '<button class="link" onclick="sair()">Sair</button>'+rodape()+'</div>';
   }
 
   else if(S.tela==="scan"){
@@ -748,16 +972,30 @@ function render(){
     var cat = f.selo==="PNLD" ? "PNLD" : f.categoria;
     h=cabecalho(S.editando?"Editar livro":"Completar cadastro", S.editando?"historico":"scan");
     if(f.autoPreenchido && !S.editando){
-      h+='<div class="livro" style="align-items:flex-start">'+
-        '<img id="capaLivro" class="capa" style="width:72px;height:100px" src="'+esc(f.capa||"")+'" alt="" onerror="this.style.visibility=\'hidden\'">'+
-        '<div class="livro-info"><div class="display" style="font-size:17px;font-weight:700;color:var(--azul);white-space:normal">'+esc(f.titulo)+'</div>'+
-        '<div class="a" style="white-space:normal">'+esc(f.autor)+'</div>'+
-        '<div style="font-size:11px;color:var(--tinta-suave);margin-top:3px">'+esc(f.editora)+' · '+esc(f.ano)+'</div>'+
-        '<div style="font-size:11px;font-weight:700;color:var(--verde);margin-top:6px">Preenchido automaticamente</div></div></div>';
+      h+='<div class="livro-destaque">'+
+        '<img id="capaLivro" class="capa-gg" src="'+esc(f.capa||SEM_CAPA)+'" alt="" loading="lazy" onerror="this.src=SEM_CAPA">'+
+        '<div style="flex:1;min-width:0">'+
+        '<div class="tit">'+esc(f.titulo)+'</div>'+
+        '<div class="aut">'+esc(f.autor||"Autor não informado")+'</div>'+
+        '<div class="det">'+
+          (f.editora?'<b>Editora:</b> '+esc(f.editora)+'<br>':'')+
+          (f.ano?'<b>Ano:</b> '+esc(f.ano)+'<br>':'')+
+          (f.isbn?'<b>ISBN:</b> '+esc(f.isbn):'')+
+        '</div>'+
+        '<div class="fonte">Preenchido automaticamente</div>'+
+        '</div></div>';
     }else{
-      h+='<div class="campo"><label>Título</label><input id="f_titulo" value="'+esc(f.titulo)+'"></div>'+
+      h+='<div style="text-align:center;margin-bottom:14px">'+
+         '<img id="capaLivro" class="capa-gg" src="'+esc(f.capa||SEM_CAPA)+'" alt="" onerror="this.src=SEM_CAPA">'+
+         '</div>'+
+         '<div class="campo"><label>Título</label><input id="f_titulo" value="'+esc(f.titulo)+'"></div>'+
          '<div class="campo"><label>Autor</label><input id="f_autor" value="'+esc(f.autor)+'"></div>';
     }
+    /* foto da capa vale para todos os casos: automático, manual e edição */
+    h+='<input type="file" id="arqCapa" accept="image/*" capture="environment" style="display:none" onchange="fotoEscolhida(this)">'+
+       '<button class="btn btn-vazado" style="margin-bottom:8px" onclick="abrirCameraCapa()">'+
+       (f.capa?'Trocar a foto da capa':'Tirar foto da capa')+'</button>'+
+       '<p id="statusCapa" style="font-size:12px;font-weight:700;color:var(--verde);text-align:center;margin:0 0 18px"></p>';
     h+='<div class="campo"><label>Este livro tem carimbo de:</label>';
     for(var i=0;i<SELOS.length;i++){
       h+='<button class="selo-btn'+(f.selo===SELOS[i]?' ativo':'')+'" onclick="setSelo(\''+SELOS[i]+'\')">'+SELOS[i]+'</button>';
@@ -806,10 +1044,10 @@ function render(){
   }
 
   else if(S.tela==="confirmado"){
-    h='<div class="center"><div class="ok">&#10003;</div>'+
+    h='<div class="center ceu">'+estrelas()+'<div class="ok">&#10003;</div>'+
       '<h1 style="font-size:23px;color:var(--azul)">Feito!</h1>'+
       '<p style="font-size:14px;color:var(--tinta-suave);margin:8px 0 22px">'+esc(S.msg)+'</p>'+
-      (db&&S.offline?'<div class="aviso aviso-coral" style="font-size:13px;width:100%">Guardado neste celular. '+fila().length+' aguardando a internet voltar — pode continuar.</div>':'')+
+      (db&&S.offline&&fila().length?'<div class="aviso aviso-amarelo" style="font-size:13px;width:100%">Guardado neste celular. '+fila().length+' aguardando a internet voltar — pode continuar.</div>':'')+
       '<div class="contagem" style="width:100%"><span>Catalogados por você</span><b>'+meusLivros().length+'</b></div>'+
       '<button class="btn" onclick="ir(\'scan\')">Escanear próximo</button>'+
       '<button class="link" onclick="ir(\'home\')">Voltar para o início</button></div>';
@@ -826,7 +1064,7 @@ function render(){
     var lp=S.livros.filter(function(l){return l.rm===S.rmVisto;});
     h=cabecalho(lp.length?lp[0].nome:"Histórico","painel")+
       '<p style="font-size:12px;font-weight:600;color:var(--tinta-suave);margin:-10px 0 16px">RM '+esc(S.rmVisto)+' · '+lp.length+' livros</p>';
-    h+= lp.length? lp.map(function(l){return cardLivro(l,true);}).join("")
+    h+= lp.length? lp.map(function(l){return cardLivro(l,S.user.papel==="coordenador");}).join("")
       : '<div class="vazio">Nenhum livro encontrado.</div>';
   }
 
@@ -842,6 +1080,22 @@ function render(){
       lista.length+' de '+S.livros.length+' livros</p><div id="lista">'+
       (lista.length?lista.map(function(l){return cardLivro(l,S.user.papel==="coordenador");}).join(""):'<div class="vazio">Nenhum livro encontrado.</div>')+
       '</div>';
+  }
+
+  else if(S.tela==="ranking"){
+    var rk=calcularRanking();
+    var minhaPos=-1;
+    for(var rp=0;rp<rk.length;rp++){ if(S.user&&rk[rp].rm===S.user.rm)minhaPos=rp+1; }
+    h=cabecalho("Ranking","home");
+    if(minhaPos>0){
+      h+='<div class="contagem"><span>Sua posição</span><b>'+minhaPos+'º</b></div>';
+    }
+    if(!rk.length)h+='<div class="vazio">Ninguém catalogou ainda. Seja a primeira!</div>';
+    for(var rr=0;rr<rk.length;rr++){
+      h+=linhaRanking(rk[rr],rr,S.user.papel==="coordenador");
+    }
+    h+='<p style="font-size:12px;font-weight:500;color:var(--tinta-suave);text-align:center;margin-top:18px">'+
+       'Total do acervo: '+S.livros.length+' livros catalogados por todo mundo.</p>'+rodape();
   }
 
   else if(S.tela==="armarios"){
@@ -897,20 +1151,21 @@ function render(){
         '<button class="btn btn-escuro" style="margin-top:10px;padding:11px;font-size:13px" onclick="resolver(\''+p.id+'\')">'+
         (p.tipo==="duvida"?"Marcar como revisado":"Confirmar união física")+'</button></div>';
     }
-    var mapa={};
-    S.livros.forEach(function(l){if(!mapa[l.rm])mapa[l.rm]={nome:l.nome,rm:l.rm,total:0};mapa[l.rm].total++;});
-    var rank=Object.keys(mapa).map(function(k){return mapa[k];}).sort(function(a,b){return b.total-a.total;});
+    var rank=calcularRanking();
     h+='<div class="secao-tit">Ranking de catalogação</div>';
     if(!rank.length)h+='<p style="font-size:14px;color:var(--tinta-suave)">Ninguém catalogou ainda.</p>';
-    for(var r=0;r<rank.length;r++){
-      h+='<button class="linha" onclick="verHistorico(\''+rank[r].rm+'\')"><span>'+(r+1)+'. '+esc(rank[r].nome)+'</span>'+
-        '<span style="color:var(--azul-med)">'+rank[r].total+' &#8250;</span></button>';
-    }
-    h+='<div class="secao-tit">Entradas de hoje</div>';
+    for(var r=0;r<rank.length;r++){ h+=linhaRanking(rank[r],r,true); }
+
+    h+='<div class="secao-tit">Entradas de hoje ('+S.logins.length+')</div>';
     if(!S.logins.length)h+='<p style="font-size:14px;color:var(--tinta-suave)">Ninguém entrou ainda.</p>';
-    for(var g=0;g<S.logins.length;g++){
-      h+='<div class="linha"><span>'+esc(S.logins[g].nome)+' <span style="font-weight:400;color:var(--tinta-suave)">· RM '+esc(S.logins[g].rm)+'</span></span>'+
-        '<span style="font-weight:600;color:var(--tinta-suave)">'+esc(S.logins[g].hora)+'</span></div>';
+    var limite = S.verTodasEntradas ? S.logins.length : 5;
+    for(var g=0;g<S.logins.length && g<limite;g++){
+      h+='<div class="linha"><span>'+esc(S.logins[g].nome)+' <span style="font-weight:500;color:var(--tinta-suave)">· RM '+esc(S.logins[g].rm)+'</span></span>'+
+        '<span style="font-weight:700;color:var(--tinta-suave)">'+esc(S.logins[g].hora)+'</span></div>';
+    }
+    if(S.logins.length>5){
+      h+='<button class="link" onclick="S.verTodasEntradas=!S.verTodasEntradas;render()">'+
+         (S.verTodasEntradas?'Mostrar só as 5 últimas':'Ver todas as '+S.logins.length+' entradas')+'</button>';
     }
     h+='<div class="secao-tit">Organização</div>'+
       '<button class="btn btn-vazado" style="margin-bottom:10px" onclick="ir(\'armarios\')">Armários — definir códigos e o que cada um guarda</button>'+
