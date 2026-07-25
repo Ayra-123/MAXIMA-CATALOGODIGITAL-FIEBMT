@@ -189,8 +189,9 @@ var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 var SEM_CAPA = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
 var LOGO = "chapamaximapreto.jpg";
 var RM_DIGITOS = 5;
-var COORDENADORAS = ["11111", "22222", "33333"];
-/* Maíra = 11111 · Ana Clara = 22222 · Melissa = 33333 */
+var COORDENADORAS = ["76063", "11111", "22222", "33333"];
+/* Ayra = 76063 (dona) · Maíra = 11111 · Ana Clara = 22222 · Melissa = 33333 */
+var RM_DONA = "76063";  /* só este RM vê o botão de zerar o catálogo */
 /* Armários iniciais — as coordenadoras podem renomear, criar e apagar
    pelo próprio site, na tela Armários do painel. */
 var ARMARIOS_PADRAO = [
@@ -380,7 +381,7 @@ function salvarArmarios(){
       var chk=document.getElementById("arm_cat_"+a.id+"_"+j);
       if(chk&&chk.checked)cats.push(CATEGORIAS_TODAS[j]);
     }
-    lista.push({id:a.id, codigo:(cod?cod.value:a.codigo).trim().toUpperCase(),
+    lista.push({id:a.id, codigo:(cod?cod.value:a.codigo).replace(/['\"\\]/g,"").trim().toUpperCase(),
                 nome:(nom?nom.value:a.nome).trim(), categorias:cats.join(","), ordem:i+1});
   }
   S.armarios=lista;
@@ -402,7 +403,7 @@ function salvarArmariosSilencioso(){
     var a=S.armarios[i];
     var cod=document.getElementById("arm_cod_"+a.id);
     var nom=document.getElementById("arm_nom_"+a.id);
-    if(cod)a.codigo=cod.value.trim().toUpperCase();
+    if(cod)a.codigo=cod.value.replace(/['\"\\]/g,"").trim().toUpperCase();
     if(nom)a.nome=nom.value.trim();
     var cats=[];
     for(var j=0;j<CATEGORIAS_TODAS.length;j++){
@@ -745,6 +746,7 @@ function salvarLivro(){
     for(var oi=0;oi<opcoes.length;oi++){ if(opcoes[oi].codigo===f.armario) arm=opcoes[oi]; }
   }
   if(!arm)return;
+  if(!arm.codigo){ alert("Este armário está sem código. Avise uma coordenadora para preencher em Armários."); return; }
   var orig=null;
   if(S.editando){for(var i=0;i<S.livros.length;i++){if(S.livros[i].id===S.editando)orig=S.livros[i];}}
   var novo={
@@ -831,9 +833,11 @@ function apagar(id){
   salvar();render();
 }
 function zerarTudo(){
-  if(!S.user||S.user.papel!=="coordenador")return;
-  if(!confirm("Isto apaga TODOS os livros, pendências e entradas do catálogo.\n\nUse somente para limpar os testes antes do mutirão começar."))return;
-  if(!confirm("Tem certeza? Não dá para desfazer."))return;
+  if(!S.user||S.user.rm!==RM_DONA)return;
+  var frase=prompt("ATENÇÃO: isto apaga o catálogo INTEIRO — todos os livros de TODAS as pessoas, sem como desfazer.\n\nPara confirmar, digite: ZERAR");
+  if(frase===null)return;
+  if(frase.trim().toUpperCase()!=="ZERAR"){alert("Nada foi apagado.");return;}
+  if(!confirm("Última confirmação: apagar "+S.livros.length+" livro(s) do catálogo?"))return;
   S.livros=[];S.pendencias=[];S.logins=[];
   gravarFila([]);
   gravarPresos([]);
@@ -865,7 +869,7 @@ function cardLivro(l,comEditar){
     '<div class="a">'+esc(l.autor||"")+'</div>'+
     '<div style="margin-top:6px"><span class="tag'+(l.categoria==="PNLD"?" tag-azul":"")+'">'+esc(l.categoria)+'</span>'+
     (l.colecao?'<span class="tag tag-amarela">coleção</span>':'')+
-    '<span style="font-size:11px;font-weight:600;color:var(--tinta-suave)">'+l.qtd+' exemplar(es)</span></div>'+
+    '<span style="font-size:11px;font-weight:600;color:var(--tinta-suave)">'+(l.qtd||1)+' exemplar(es)</span></div>'+
     '<div style="font-size:11px;font-weight:600;margin-top:4px;color:var(--azul-med)">Armário '+esc(l.armario)+'</div></div>'+
     (comEditar?'<button class="icone-btn" onclick="editar(\''+l.id+'\')" title="Editar">&#9998;</button>':'')+
     (comEditar&&S.user&&S.user.papel==="coordenador"
@@ -1018,6 +1022,9 @@ function render(){
     }
     if(cat && opcoes.length===0){
       h+='<div class="aviso aviso-coral" style="font-size:13px">Nenhum armário está definido para <b>'+esc(cat)+'</b>. Avise uma coordenadora para cadastrar o armário.</div>';
+    }else if(opcoes.length===1 && !armEscolhido.codigo){
+      h+='<div class="aviso aviso-coral" style="font-size:13px">O armário de <b>'+esc(cat)+'</b> está sem código. Avise uma coordenadora.</div>';
+      armEscolhido=null;
     }else if(opcoes.length===1){
       h+='<div style="margin-bottom:16px"><span class="tag'+(cat==="PNLD"?" tag-azul":"")+'">Vai para o Armário '+esc(armEscolhido.codigo)+
          (armEscolhido.nome?' · '+esc(armEscolhido.nome):'')+'</span></div>';
@@ -1126,6 +1133,15 @@ function render(){
       if(armariosDe(CATEGORIAS_TODAS[ck]).length===0)semArm.push(CATEGORIAS_TODAS[ck]);
     }
     if(semArm.length)h+='<div class="aviso aviso-amarelo" style="margin-top:16px;font-size:13px">Sem armário definido: <b>'+esc(semArm.join(", "))+'</b>. Livros dessas categorias não poderão ser salvos.</div>';
+
+    var semCod=[], vistos={}, repetidos=[];
+    for(var cz=0;cz<S.armarios.length;cz++){
+      var az=S.armarios[cz];
+      if(!az.codigo && (az.categorias||"").length)semCod.push(az.nome||"sem nome");
+      if(az.codigo){ if(vistos[az.codigo])repetidos.push(az.codigo); vistos[az.codigo]=true; }
+    }
+    if(semCod.length)h+='<div class="aviso aviso-coral" style="margin-top:12px;font-size:13px">Sem código: <b>'+esc(semCod.join(", "))+'</b>. Preencha o código, senão os livros ficam sem lugar.</div>';
+    if(repetidos.length)h+='<div class="aviso aviso-coral" style="margin-top:12px;font-size:13px">Código repetido: <b>'+esc(repetidos.join(", "))+'</b>. Dois armários com o mesmo código confundem na hora de guardar.</div>';
     h+=rodape();
   }
 
@@ -1170,9 +1186,10 @@ function render(){
     h+='<div class="secao-tit">Organização</div>'+
       '<button class="btn btn-vazado" style="margin-bottom:10px" onclick="ir(\'armarios\')">Armários — definir códigos e o que cada um guarda</button>'+
       '<button class="btn btn-vazado" onclick="cadastroManual()">Cadastrar livro manualmente</button>'+
-      '<div class="secao-tit" style="color:var(--coral)">Antes do mutirão começar</div>'+
-      '<p style="font-size:13px;color:var(--tinta-suave);margin:0 0 10px">Use para limpar os livros de teste. Depois que o mutirão começar, não use.</p>'+
-      '<button class="btn btn-coral" onclick="zerarTudo()">Zerar catálogo</button>'+rodape();
+      (S.user.rm===RM_DONA?
+        '<div class="secao-tit" style="color:var(--coral)">Antes do mutirão começar</div>'+
+        '<p style="font-size:13px;color:var(--tinta-suave);margin:0 0 10px">Apaga o catálogo inteiro, de todas as pessoas. Use só para limpar os testes antes do dia.</p>'+
+        '<button class="btn btn-coral" onclick="zerarTudo()">Zerar catálogo</button>' : '')+rodape();
   }
 
   document.getElementById("app").innerHTML=h;
