@@ -204,8 +204,9 @@ var ARMARIOS_PADRAO = [
   {id:"d1", codigo:"D1", nome:"Revistas", categorias:"Revistas", ordem:7},
   {id:"d2", codigo:"D2", nome:"Outros", categorias:"Outros gêneros", ordem:8}
 ];
-var GENEROS = ["Literatura","Paradidáticos","Dicionários","Vestibulares","Coleções","Revistas","Outros gêneros"];
-var CATEGORIAS_TODAS = ["PNLD"].concat(GENEROS);
+/* Gêneros iniciais — as coordenadoras podem editar pelo site, em Armários.
+   PNLD não entra aqui: ele vem do carimbo do livro, não do dropdown. */
+var GENEROS_PADRAO = ["Literatura","Paradidáticos","Dicionários","Vestibulares","Coleções","Revistas","Outros gêneros"];
 var ESTADOS = ["Excelente","Bom","Regular","Ruim","Necessita reparo"];
 var SELOS = ["PNLD","Acervo da Biblioteca","Comum"];
 var COLECOES = [
@@ -214,8 +215,15 @@ var COLECOES = [
 ];
 /* ==================================================================== */
 
-var S = {tela:"login", user:null, livros:[], pendencias:[], logins:[], armarios:[], form:{}, erro:"",
-         busca:"", filtro:"Todos", editando:null, dup:null, msg:"", rmVisto:null, carregando:false, offline:false, ultimoIsbn:"", msgArm:"", verTodasEntradas:false};
+var S = {tela:"login", user:null, livros:[], pendencias:[], logins:[], armarios:[], generos:[], form:{}, erro:"",
+         busca:"", filtro:"Todos", editando:null, dup:null, msg:"", rmVisto:null, carregando:false, offline:false, ultimoIsbn:"", msgArm:"", verTodasEntradas:false, diag:[]};
+
+var CATS_NA_TELA = [];  /* lista exata desenhada na tela de Armários, para ler as caixinhas certo */
+
+/* lista atual de categorias: PNLD (do carimbo) + os gêneros editáveis */
+function todasCategorias(){
+  return ["PNLD"].concat(S.generos.map(function(g){return g.nome;}).filter(function(n){return n;}));
+}
 
 /* devolve todos os armários que aceitam a categoria informada */
 function armariosDe(cat){
@@ -250,6 +258,10 @@ function carregar(){
     var arm=JSON.parse(localStorage.getItem("cat_armarios")||"null");
     S.armarios = (arm&&arm.length)? arm : ARMARIOS_PADRAO.slice();
   }catch(e){ S.armarios=ARMARIOS_PADRAO.slice(); }
+  try{
+    var ger=JSON.parse(localStorage.getItem("cat_generos")||"null");
+    S.generos = (ger&&ger.length)? ger : GENEROS_PADRAO.map(function(n,i){return {id:"g"+i,nome:n,ordem:i+1};});
+  }catch(e){ S.generos=GENEROS_PADRAO.map(function(n,i){return {id:"g"+i,nome:n,ordem:i+1};}); }
   /* mantém a sessão se o celular bloquear ou a página recarregar */
   try{
     var u=JSON.parse(localStorage.getItem("cat_user")||"null");
@@ -346,7 +358,10 @@ function baixarTudo(forcar){
     /* mantém na tela os livros que ainda não subiram, para nada sumir */
     var temId={}; vindos.forEach(function(l){temId[l.id]=true;});
     fila().forEach(function(item){
-      if(item.tipo==="livro" && !temId[item.dado.id]) vindos.unshift(item.dado);
+      if(item.tipo==="livro" && !temId[item.dado.id]){ vindos.unshift(item.dado); temId[item.dado.id]=true; }
+    });
+    presos().forEach(function(item){
+      if(item.tipo==="livro" && !temId[item.dado.id]){ vindos.unshift(item.dado); temId[item.dado.id]=true; }
     });
     S.livros=vindos; salvar(); render();
   });
@@ -355,6 +370,17 @@ function baixarTudo(forcar){
   });
   db.from("logins").select("*").order("criado_em",{ascending:false}).limit(60).then(function(r){
     if(!r.error){S.logins=r.data||[];render();}
+  });
+  db.from("categorias").select("*").order("ordem",{ascending:true}).then(function(r){
+    if(r.error)return;
+    if(!r.data||!r.data.length){
+      S.generos=GENEROS_PADRAO.map(function(n,i){return {id:"g"+i,nome:n,ordem:i+1};});
+      db.from("categorias").upsert(S.generos).then(function(){});
+    }else{
+      S.generos=r.data;
+    }
+    try{ localStorage.setItem("cat_generos", JSON.stringify(S.generos)); }catch(e){}
+    render();
   });
   db.from("armarios").select("*").order("ordem",{ascending:true}).then(function(r){
     if(r.error)return;
@@ -369,46 +395,86 @@ function baixarTudo(forcar){
     render();
   });
 }
-function salvarArmarios(){
-  if(!S.user||S.user.papel!=="coordenador")return;
-  var lista=[];
-  for(var i=0;i<S.armarios.length;i++){
-    var a=S.armarios[i];
-    var cod=document.getElementById("arm_cod_"+a.id);
-    var nom=document.getElementById("arm_nom_"+a.id);
-    var cats=[];
-    for(var j=0;j<CATEGORIAS_TODAS.length;j++){
-      var chk=document.getElementById("arm_cat_"+a.id+"_"+j);
-      if(chk&&chk.checked)cats.push(CATEGORIAS_TODAS[j]);
-    }
-    lista.push({id:a.id, codigo:(cod?cod.value:a.codigo).replace(/['\"\\]/g,"").trim().toUpperCase(),
-                nome:(nom?nom.value:a.nome).trim(), categorias:cats.join(","), ordem:i+1});
+function lerGeneros(){
+  for(var i=0;i<S.generos.length;i++){
+    var el=document.getElementById("gen_"+S.generos[i].id);
+    if(el)S.generos[i].nome=el.value.trim();
   }
-  S.armarios=lista;
-  try{ localStorage.setItem("cat_armarios", JSON.stringify(lista)); }catch(e){}
-  if(db)db.from("armarios").upsert(lista).then(function(r){
-    if(r&&r.error){alert("Não foi possível salvar no banco. Verifique a internet.");}
-  });
-  S.msgArm="Armários salvos.";
+}
+function novoGenero(){
+  if(!S.user||S.user.papel!=="coordenador")return;
+  lerGeneros(); lerArmariosDaTela();
+  S.generos.push({id:"g"+Date.now(), nome:"", ordem:S.generos.length+1});
   render();
 }
+function removerGenero(id){
+  if(!S.user||S.user.papel!=="coordenador")return;
+  var g=null;
+  for(var i=0;i<S.generos.length;i++){if(S.generos[i].id===id)g=S.generos[i];}
+  if(!g)return;
+  var emUso=S.livros.filter(function(l){return l.categoria===g.nome;}).length;
+  var msg = emUso
+    ? 'Remover o gênero "'+g.nome+'"?\n\n'+emUso+' livro(s) já foram catalogados nele. Eles continuam no catálogo, mas o gênero some da lista.'
+    : 'Remover o gênero "'+(g.nome||"sem nome")+'"?';
+  if(!confirm(msg))return;
+  lerGeneros(); lerArmariosDaTela();
+  S.generos=S.generos.filter(function(x){return x.id!==id;});
+  /* tira o gênero removido dos armários que o guardavam */
+  for(var k=0;k<S.armarios.length;k++){
+    var lista=(S.armarios[k].categorias||"").split(",").map(function(x){return x.trim();})
+                .filter(function(x){return x && x!==g.nome;});
+    S.armarios[k].categorias=lista.join(",");
+  }
+  salvarOrganizacao("Gênero removido.");
+}
+function salvarOrganizacao(msg){
+  if(!S.user||S.user.papel!=="coordenador")return;
+  lerGeneros();
+  lerArmariosDaTela();
+  S.generos=S.generos.filter(function(g){return g.nome;});
+  for(var i=0;i<S.generos.length;i++)S.generos[i].ordem=i+1;
+  for(var j=0;j<S.armarios.length;j++)S.armarios[j].ordem=j+1;
+  try{
+    localStorage.setItem("cat_generos", JSON.stringify(S.generos));
+    localStorage.setItem("cat_armarios", JSON.stringify(S.armarios));
+  }catch(e){}
+  if(db){
+    db.from("categorias").upsert(S.generos).then(function(r){
+      if(r&&r.error)alert("Não consegui salvar os gêneros. Verifique a internet.");
+    });
+    db.from("armarios").upsert(S.armarios).then(function(r){
+      if(r&&r.error)alert("Não consegui salvar os armários. Verifique a internet.");
+    });
+  }
+  S.msgArm = msg || "Alterações salvas.";
+  render();
+}
+function salvarArmarios(){ salvarOrganizacao("Armários e gêneros salvos."); }
 function novoArmario(){
   if(!S.user||S.user.papel!=="coordenador")return;
-  salvarArmariosSilencioso();
+  lerGeneros(); lerArmariosDaTela();
   S.armarios.push({id:"arm"+Date.now(), codigo:"", nome:"", categorias:"", ordem:S.armarios.length+1});
   render();
 }
-function salvarArmariosSilencioso(){
+function lerArmariosDaTela(){
   for(var i=0;i<S.armarios.length;i++){
     var a=S.armarios[i];
     var cod=document.getElementById("arm_cod_"+a.id);
     var nom=document.getElementById("arm_nom_"+a.id);
     if(cod)a.codigo=cod.value.replace(/['\"\\]/g,"").trim().toUpperCase();
     if(nom)a.nome=nom.value.trim();
+    /* lê pela posição desenhada, mas grava o nome ATUAL do gênero.
+       assim renomear propaga e apagar um nome não desloca as marcações. */
+    var base = CATS_NA_TELA.length ? CATS_NA_TELA
+             : todasCategorias().map(function(n){return {id:n, nome:n};});
     var cats=[];
-    for(var j=0;j<CATEGORIAS_TODAS.length;j++){
+    for(var j=0;j<base.length;j++){
       var chk=document.getElementById("arm_cat_"+a.id+"_"+j);
-      if(chk&&chk.checked)cats.push(CATEGORIAS_TODAS[j]);
+      if(!chk||!chk.checked)continue;
+      if(base[j].id==="PNLD"){ cats.push("PNLD"); continue; }
+      var atual=null;
+      for(var q=0;q<S.generos.length;q++){ if(S.generos[q].id===base[j].id)atual=S.generos[q]; }
+      if(atual&&atual.nome)cats.push(atual.nome);   /* gênero apagado some da marcação */
     }
     if(document.getElementById("arm_cat_"+a.id+"_0"))a.categorias=cats.join(",");
   }
@@ -419,7 +485,7 @@ function removerArmario(id){
   for(var i=0;i<S.armarios.length;i++){if(S.armarios[i].id===id)a=S.armarios[i];}
   if(!a)return;
   if(!confirm("Remover o armário "+(a.codigo||"sem código")+"?\n\nOs livros já catalogados nele continuam registrados."))return;
-  salvarArmariosSilencioso();
+  lerGeneros(); lerArmariosDaTela();
   S.armarios=S.armarios.filter(function(x){return x.id!==id;});
   try{ localStorage.setItem("cat_armarios", JSON.stringify(S.armarios)); }catch(e){}
   if(db)db.from("armarios").delete().eq("id",id).then(function(){});
@@ -562,6 +628,7 @@ function aplicarDados(isbn,dados){
   if(!dados.capaDefinitiva)buscarCapaEmSegundoPlano(isbn);
 }
 function buscarIsbn(isbn){
+  pararLeitor();  /* desliga a câmera antes de redesenhar a tela */
   isbn=String(isbn).replace(/[^0-9Xx]/g,"");
   var existente=null;
   for(var i=0;i<S.livros.length;i++){if(S.livros[i].isbn===isbn){existente=S.livros[i];break;}}
@@ -572,10 +639,15 @@ function buscarIsbn(isbn){
 
 /* 1a fonte: BrasilAPI — reúne CBL, Mercado Editorial, Open Library e Google Books */
 function buscarBrasilAPI(isbn){
+  S.diag=[];
   fetch("https://brasilapi.com.br/api/isbn/v1/"+isbn)
-    .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
+    .then(function(r){
+      if(!r.ok){ S.diag.push("BrasilAPI: não tem esse ISBN ("+r.status+")"); return Promise.reject("nf"); }
+      return r.json();
+    })
     .then(function(d){
       if(d&&d.title){
+        S.diag.push("BrasilAPI: encontrou");
         var t=d.title;
         if(d.subtitle)t+=" — "+d.subtitle;
         return aplicarDados(isbn,{
@@ -587,9 +659,13 @@ function buscarBrasilAPI(isbn){
           capaDefinitiva:!!d.cover_url
         });
       }
+      S.diag.push("BrasilAPI: resposta sem título");
       buscarGoogle(isbn);
     })
-    .catch(function(){ buscarGoogle(isbn); });
+    .catch(function(e){
+      if(e!=="nf")S.diag.push("BrasilAPI: não respondeu (rede ou bloqueio)");
+      buscarGoogle(isbn);
+    });
 }
 
 /* 2a fonte: Google Books — cobre bem edição estrangeira */
@@ -598,6 +674,7 @@ function buscarGoogle(isbn){
     .then(function(r){return r.json();})
     .then(function(d){
       if(d.items&&d.items.length){
+        S.diag.push("Google Books: encontrou");
         var v=d.items[0].volumeInfo||{};
         var t=v.title||"";
         if(v.subtitle)t+=" — "+v.subtitle;
@@ -610,9 +687,13 @@ function buscarGoogle(isbn){
           capaDefinitiva:!!(v.imageLinks&&v.imageLinks.thumbnail)
         });
       }
+      S.diag.push("Google Books: não tem esse ISBN");
       buscarOpenLibrary(isbn);
     })
-    .catch(function(){ buscarOpenLibrary(isbn); });
+    .catch(function(){
+      S.diag.push("Google Books: não respondeu");
+      buscarOpenLibrary(isbn);
+    });
 }
 
 /* 3a fonte: Open Library */
@@ -622,6 +703,7 @@ function buscarOpenLibrary(isbn){
     .then(function(d){
       var k="ISBN:"+isbn, v=d[k];
       if(v&&v.title){
+        S.diag.push("Open Library: encontrou");
         var t=v.title;
         if(v.subtitle)t+=" — "+v.subtitle;
         return aplicarDados(isbn,{
@@ -632,9 +714,11 @@ function buscarOpenLibrary(isbn){
           capa:(v.cover&&(v.cover.medium||v.cover.large))?(v.cover.medium||v.cover.large):null
         });
       }
+      S.diag.push("Open Library: não tem esse ISBN");
       S.carregando=false;S.form=formVazio();S.form.isbn=isbn;ir("naoAchou");
     })
     .catch(function(){
+      S.diag.push("Open Library: não respondeu");
       S.carregando=false;S.form=formVazio();S.form.isbn=isbn;ir("naoAchou");});
 }
 
@@ -738,7 +822,11 @@ function escolherArmario(cod){lerForm();S.form.armario=cod;render();}
 function salvarLivro(){
   lerForm();
   var f=S.form;
+  if(!f.titulo){ alert("O livro precisa de um título."); return; }
+  if(!f.selo){ alert("Escolha o carimbo do livro."); return; }
+  if(!f.estado){ alert("Escolha o estado de conservação."); return; }
   var cat = f.selo==="PNLD" ? "PNLD" : f.categoria;
+  if(!cat){ alert("Escolha a categoria do livro."); return; }
   var opcoes = armariosDe(cat);
   var arm = null;
   if(opcoes.length===1) arm=opcoes[0];
@@ -848,6 +936,28 @@ function zerarTudo(){
   }
   salvar();render();
 }
+function testarBases(){
+  var isbn="9788535914849"; /* Dom Casmurro — existe nas bases */
+  var res=document.getElementById("resultTeste");
+  if(res)res.innerHTML="Testando as três bases…";
+  var saida=[];
+  function mostrar(){ if(res)res.innerHTML=saida.join("<br>"); }
+
+  fetch("https://brasilapi.com.br/api/isbn/v1/"+isbn)
+    .then(function(r){ return r.ok?r.json():Promise.reject(r.status); })
+    .then(function(d){ saida.push("BrasilAPI: OK — achou \""+esc(d.title||"?")+"\""); mostrar(); })
+    .catch(function(e){ saida.push("BrasilAPI: FALHOU ("+(e||"sem resposta")+")"); mostrar(); });
+
+  fetch("https://www.googleapis.com/books/v1/volumes?q=isbn:"+isbn)
+    .then(function(r){return r.json();})
+    .then(function(d){ saida.push("Google Books: "+(d.items&&d.items.length?"OK":"respondeu vazio")); mostrar(); })
+    .catch(function(){ saida.push("Google Books: FALHOU"); mostrar(); });
+
+  fetch("https://openlibrary.org/api/books?bibkeys=ISBN:"+isbn+"&format=json&jscmd=data")
+    .then(function(r){return r.json();})
+    .then(function(d){ saida.push("Open Library: "+(d["ISBN:"+isbn]?"OK":"respondeu vazio")); mostrar(); })
+    .catch(function(){ saida.push("Open Library: FALHOU"); mostrar(); });
+}
 function cadastroManual(){S.editando=null;S.form=formVazio();ir("formulario");}
 function verHistorico(rm){S.rmVisto=rm;ir("histPessoa");}
 function sair(){
@@ -953,10 +1063,14 @@ function render(){
   else if(S.tela==="naoAchou"){
     h=cabecalho("ISBN não encontrado","scan")+
       '<div class="aviso aviso-amarelo">Procuramos o ISBN <b>'+esc(S.ultimoIsbn||"")+'</b> em três bases públicas e não achamos. '+
-      'Confira se os números batem com o código do livro. '+
+      'Confira se os números batem com o código impresso no livro. '+
       (S.user.papel==="coordenador"?'Se estiver certo, cadastre manualmente abaixo.'
-        :'Se estiver certo, separe o livro e chame uma coordenadora.')+'</div>'+
-      (S.user.papel==="coordenador"
+        :'Se estiver certo, separe o livro e chame uma coordenadora.')+'</div>';
+    if(S.diag&&S.diag.length){
+      h+='<div class="aviso aviso-azul" style="font-size:12px"><b>O que cada base respondeu:</b><br>'+
+         esc(S.diag.join(" · "))+'</div>';
+    }
+    h+=(S.user.papel==="coordenador"
         ?'<button class="btn" onclick="ir(\'formulario\')">Cadastrar manualmente</button>'
         :'<button class="btn btn-vazado" onclick="ir(\'scan\')">Voltar e separar o livro</button>');
   }
@@ -998,8 +1112,9 @@ function render(){
     /* foto da capa vale para todos os casos: automático, manual e edição */
     h+='<input type="file" id="arqCapa" accept="image/*" capture="environment" style="display:none" onchange="fotoEscolhida(this)">'+
        '<button class="btn btn-vazado" style="margin-bottom:8px" onclick="abrirCameraCapa()">'+
-       (f.capa?'Trocar a foto da capa':'Tirar foto da capa')+'</button>'+
-       '<p id="statusCapa" style="font-size:12px;font-weight:700;color:var(--verde);text-align:center;margin:0 0 18px"></p>';
+       (f.capa?'Tirar outra foto da capa':'Tirar foto da capa agora')+'</button>'+
+       '<p id="statusCapa" style="font-size:12px;font-weight:700;color:var(--verde);text-align:center;margin:0 0 4px"></p>'+
+       '<p style="font-size:11px;font-weight:500;color:var(--tinta-suave);text-align:center;margin:0 0 18px">Abre a câmera direto — não precisa fotografar antes.</p>';
     h+='<div class="campo"><label>Este livro tem carimbo de:</label>';
     for(var i=0;i<SELOS.length;i++){
       h+='<button class="selo-btn'+(f.selo===SELOS[i]?' ativo':'')+'" onclick="setSelo(\''+SELOS[i]+'\')">'+SELOS[i]+'</button>';
@@ -1008,8 +1123,9 @@ function render(){
     if(f.selo && f.selo!=="PNLD"){
       h+='<div class="campo"><label>Categoria / gênero</label><select id="f_cat" onchange="atualizaForm()">'+
         '<option value="">Selecione</option>';
-      for(var j=0;j<GENEROS.length;j++){
-        h+='<option'+(f.categoria===GENEROS[j]?' selected':'')+'>'+GENEROS[j]+'</option>';}
+      var gs=S.generos;
+      for(var j=0;j<gs.length;j++){ if(!gs[j].nome)continue;
+        h+='<option'+(f.categoria===gs[j].nome?' selected':'')+'>'+esc(gs[j].nome)+'</option>';}
       h+='</select></div>'+
         '<label class="check"><input type="checkbox" id="f_duvida"'+(f.duvida?' checked':'')+'>'+
         'Não tenho certeza — marcar para um professor revisar</label>';
@@ -1076,7 +1192,7 @@ function render(){
   }
 
   else if(S.tela==="acervo"){
-    var cats=["Todos","PNLD"].concat(GENEROS);
+    var cats=["Todos"].concat(todasCategorias());
     var lista=filtrar();
     h=cabecalho("Acervo catalogado","home")+
       '<div class="campo"><input id="busca" placeholder="Buscar por título ou autor" value="'+esc(S.busca)+'" oninput="S.busca=this.value;desenhaLista()"></div>'+
@@ -1106,12 +1222,30 @@ function render(){
   }
 
   else if(S.tela==="armarios"){
-    h=cabecalho("Armários","painel")+
-      '<p style="font-size:13px;color:var(--tinta-suave);margin:-10px 0 18px">Defina o código, o nome e o que cada armário guarda. Vale para todos os celulares.</p>';
+    h=cabecalho("Armários e gêneros","painel");
     if(S.msgArm){h+='<div class="aviso aviso-azul" style="font-size:13px">'+esc(S.msgArm)+'</div>';S.msgArm="";}
+
+    h+='<div class="secao-tit">Gêneros</div>'+
+       '<p style="font-size:13px;color:var(--tinta-suave);margin:-6px 0 12px">São as opções que aparecem para o voluntário escolher. PNLD não entra aqui — vem do carimbo do livro.</p>';
+    for(var gi=0;gi<S.generos.length;gi++){
+      var g=S.generos[gi];
+      var usoG=S.livros.filter(function(l){return l.categoria===g.nome;}).length;
+      h+='<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">'+
+        '<input id="gen_'+g.id+'" value="'+esc(g.nome||"")+'" placeholder="Ex: História" style="flex:1">'+
+        '<button class="icone-btn lixeira" onclick="removerGenero(\''+g.id+'\')" title="Remover">&#128465;</button>'+
+        '</div>'+
+        (usoG?'<p style="font-size:11px;color:var(--tinta-suave);margin:-4px 0 10px 2px">'+usoG+' livro(s) já catalogado(s)</p>':'');
+    }
+    h+='<button class="btn btn-vazado" style="margin-bottom:6px" onclick="novoGenero()">Adicionar gênero</button>';
+
+    CATS_NA_TELA = [{id:"PNLD", nome:"PNLD"}].concat(
+      S.generos.filter(function(x){return x.nome;}).map(function(x){return {id:x.id, nome:x.nome};}));
+    h+='<div class="secao-tit">Armários</div>'+
+       '<p style="font-size:13px;color:var(--tinta-suave);margin:-6px 0 12px">Código, nome e o que cada um guarda. Vale para todos os celulares.</p>';
     for(var ai=0;ai<S.armarios.length;ai++){
       var a=S.armarios[ai];
       var minhas=(a.categorias||"").split(",").map(function(x){return x.trim();});
+      var todas=CATS_NA_TELA.map(function(x){return x.nome;});
       h+='<div class="card" style="padding:16px">'+
         '<div style="display:flex;gap:8px;margin-bottom:10px">'+
         '<div style="width:32%"><label>Código</label>'+
@@ -1119,18 +1253,18 @@ function render(){
         '<div style="flex:1"><label>Nome</label>'+
         '<input id="arm_nom_'+a.id+'" value="'+esc(a.nome||"")+'" placeholder="Língua Portuguesa"></div>'+
         '</div><label>O que guarda</label><div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px">';
-      for(var ci=0;ci<CATEGORIAS_TODAS.length;ci++){
+      for(var ci=0;ci<todas.length;ci++){
         h+='<label style="display:flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:var(--tinta);text-transform:none;letter-spacing:0;margin:0">'+
            '<input type="checkbox" id="arm_cat_'+a.id+'_'+ci+'" style="width:17px;height:17px"'+
-           (minhas.indexOf(CATEGORIAS_TODAS[ci])>=0?' checked':'')+'>'+CATEGORIAS_TODAS[ci]+'</label>';
+           (minhas.indexOf(todas[ci])>=0?' checked':'')+'>'+esc(todas[ci])+'</label>';
       }
       h+='</div><button class="btn btn-coral" style="padding:10px;font-size:13px" onclick="removerArmario(\''+a.id+'\')">Remover este armário</button></div>';
     }
     h+='<button class="btn btn-vazado" style="margin-bottom:10px" onclick="novoArmario()">Adicionar armário</button>'+
-       '<button class="btn" onclick="salvarArmarios()">Salvar armários</button>';
+       '<button class="btn" onclick="salvarArmarios()">Salvar tudo</button>';
     var semArm=[];
-    for(var ck=0;ck<CATEGORIAS_TODAS.length;ck++){
-      if(armariosDe(CATEGORIAS_TODAS[ck]).length===0)semArm.push(CATEGORIAS_TODAS[ck]);
+    for(var ck=0;ck<todasCategorias().length;ck++){
+      if(armariosDe(todasCategorias()[ck]).length===0)semArm.push(todasCategorias()[ck]);
     }
     if(semArm.length)h+='<div class="aviso aviso-amarelo" style="margin-top:16px;font-size:13px">Sem armário definido: <b>'+esc(semArm.join(", "))+'</b>. Livros dessas categorias não poderão ser salvos.</div>';
 
@@ -1142,6 +1276,15 @@ function render(){
     }
     if(semCod.length)h+='<div class="aviso aviso-coral" style="margin-top:12px;font-size:13px">Sem código: <b>'+esc(semCod.join(", "))+'</b>. Preencha o código, senão os livros ficam sem lugar.</div>';
     if(repetidos.length)h+='<div class="aviso aviso-coral" style="margin-top:12px;font-size:13px">Código repetido: <b>'+esc(repetidos.join(", "))+'</b>. Dois armários com o mesmo código confundem na hora de guardar.</div>';
+
+    var atuais=todasCategorias(), orfaos={};
+    S.livros.forEach(function(l){ if(l.categoria && atuais.indexOf(l.categoria)<0)orfaos[l.categoria]=(orfaos[l.categoria]||0)+1; });
+    var listaOrfa=Object.keys(orfaos);
+    if(listaOrfa.length){
+      h+='<div class="aviso aviso-amarelo" style="margin-top:12px;font-size:13px">Existem livros num gênero que não está mais na lista: <b>'+
+         esc(listaOrfa.map(function(c){return c+" ("+orfaos[c]+")";}).join(", "))+
+         '</b>. Eles continuam no catálogo e aparecem em "Todos", mas não têm filtro próprio.</div>';
+    }
     h+=rodape();
   }
 
@@ -1184,8 +1327,12 @@ function render(){
          (S.verTodasEntradas?'Mostrar só as 5 últimas':'Ver todas as '+S.logins.length+' entradas')+'</button>';
     }
     h+='<div class="secao-tit">Organização</div>'+
-      '<button class="btn btn-vazado" style="margin-bottom:10px" onclick="ir(\'armarios\')">Armários — definir códigos e o que cada um guarda</button>'+
+      '<button class="btn btn-vazado" style="margin-bottom:10px" onclick="ir(\'armarios\')">Armários e gêneros — definir a organização</button>'+
       '<button class="btn btn-vazado" onclick="cadastroManual()">Cadastrar livro manualmente</button>'+
+      '<div class="secao-tit">Diagnóstico</div>'+
+      '<p style="font-size:13px;color:var(--tinta-suave);margin:0 0 10px">Se muitos livros não estiverem sendo encontrados, teste se as bases estão respondendo.</p>'+
+      '<button class="btn btn-vazado" onclick="testarBases()">Testar as bases de ISBN</button>'+
+      '<p id="resultTeste" style="font-size:12px;font-weight:600;color:var(--azul);margin:10px 0 0;line-height:1.6"></p>'+
       (S.user.rm===RM_DONA?
         '<div class="secao-tit" style="color:var(--coral)">Antes do mutirão começar</div>'+
         '<p style="font-size:13px;color:var(--tinta-suave);margin:0 0 10px">Apaga o catálogo inteiro, de todas as pessoas. Use só para limpar os testes antes do dia.</p>'+
