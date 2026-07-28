@@ -186,6 +186,13 @@ var SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 /* Enquanto a chave não for colada, o site funciona guardando os dados
    apenas no próprio celular. Com a chave, todos passam a ver o mesmo acervo. */
 
+/* --- CHAVE DO GOOGLE BOOKS (opcional, gratuita) ---
+   Sem chave, o Google usa uma cota GLOBAL dividida com o mundo inteiro,
+   que pode acabar a qualquer momento. Com chave, a cota é só de vocês.
+   Como obter: console.cloud.google.com -> criar projeto -> ativar "Books API"
+   -> Credenciais -> Criar credencial -> Chave de API -> copiar e colar abaixo. */
+var GOOGLE_KEY = "";
+
 var SEM_CAPA = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
 var LOGO = "chapamaximapreto.jpg";
 var RM_DIGITOS = 5;
@@ -719,7 +726,7 @@ function buscarBrasilAPI(isbn){
 
 /* 2a fonte: Google Books — cobre bem edição estrangeira */
 function buscarGoogle(isbn){
-  fetch("https://www.googleapis.com/books/v1/volumes?q=isbn:"+isbn)
+  fetch("https://www.googleapis.com/books/v1/volumes?q=isbn:"+isbn+(GOOGLE_KEY?"&key="+GOOGLE_KEY:""))
     .then(function(r){
       if(limiteAtingido(r.status)){ S.diag.push("Google Books: recusou por excesso de uso ("+r.status+")"); S.travou++; return Promise.reject("lim"); }
       return r.json();
@@ -1005,7 +1012,7 @@ function testarBases(){
     .then(function(d){ saida.push("BrasilAPI: OK — achou \""+esc(d.title||"?")+"\""); mostrar(); })
     .catch(function(e){ saida.push("BrasilAPI: FALHOU ("+(e||"sem resposta")+")"); mostrar(); });
 
-  fetch("https://www.googleapis.com/books/v1/volumes?q=isbn:"+isbn)
+  fetch("https://www.googleapis.com/books/v1/volumes?q=isbn:"+isbn+(GOOGLE_KEY?"&key="+GOOGLE_KEY:""))
     .then(function(r){return r.json();})
     .then(function(d){ saida.push("Google Books: "+(d.items&&d.items.length?"OK":"respondeu vazio")); mostrar(); })
     .catch(function(){ saida.push("Google Books: FALHOU"); mostrar(); });
