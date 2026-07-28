@@ -216,7 +216,7 @@ var COLECOES = [
 /* ==================================================================== */
 
 var S = {tela:"login", user:null, livros:[], pendencias:[], logins:[], armarios:[], generos:[], form:{}, erro:"",
-         busca:"", filtro:"Todos", editando:null, dup:null, msg:"", rmVisto:null, carregando:false, offline:false, ultimoIsbn:"", msgArm:"", verTodasEntradas:false, diag:[]};
+         busca:"", filtro:"Todos", editando:null, dup:null, msg:"", rmVisto:null, carregando:false, offline:false, ultimoIsbn:"", msgArm:"", verTodasEntradas:false, diag:[], limitado:false, travou:0, hist:[]};
 
 var CATS_NA_TELA = [];  /* lista exata desenhada na tela de Armários, para ler as caixinhas certo */
 
@@ -246,7 +246,10 @@ function salvar(){
     localStorage.setItem("cat_livros", JSON.stringify(S.livros));
     localStorage.setItem("cat_pend", JSON.stringify(S.pendencias));
     localStorage.setItem("cat_logins", JSON.stringify(S.logins));
-  }catch(e){}
+  }catch(e){
+    /* celular sem espaço: descarta a memória de ISBN, que é o que dá para perder */
+    try{ localStorage.removeItem("cat_isbn"); localStorage.setItem("cat_livros", JSON.stringify(S.livros)); }catch(e2){}
+  }
 }
 function carregar(){
   try{
@@ -346,15 +349,26 @@ function enviarLogin(x){ enfileirar("login",x); processarFila(); }
    Só rebaixa o catálogo a cada 15 segundos, para não puxar milhares
    de livros a cada toque de botão. */
 var ultimaSync=0;
+/* O banco devolve no máximo 1000 linhas por consulta. Acima disso os livros
+   sumiriam da tela e a checagem de duplicata falharia — por isso buscamos em páginas. */
+function baixarLivrosTodos(pagina,acumulado,pronto){
+  var de=pagina*1000, ate=de+999;
+  db.from("livros").select("*").order("criado_em",{ascending:false}).range(de,ate).then(function(r){
+    if(r.error){ S.offline=true; render(); return; }
+    var lote=r.data||[];
+    var tudo=acumulado.concat(lote);
+    if(lote.length===1000 && pagina<9) baixarLivrosTodos(pagina+1,tudo,pronto);
+    else pronto(tudo);
+  });
+}
 function baixarTudo(forcar){
   if(!db)return;
   var agora=Date.now();
   if(!forcar && agora-ultimaSync<15000) return;
   ultimaSync=agora;
 
-  db.from("livros").select("*").order("criado_em",{ascending:false}).then(function(r){
-    if(r.error){ S.offline=true; render(); return; }
-    var vindos=r.data||[];
+  baixarLivrosTodos(0,[],function(vindos){
+    S.offline=false;
     /* mantém na tela os livros que ainda não subiram, para nada sumir */
     var temId={}; vindos.forEach(function(l){temId[l.id]=true;});
     fila().forEach(function(item){
@@ -496,10 +510,32 @@ function esc(t){return String(t==null?"":t).replace(/[&<>"']/g,function(c){
 function formVazio(){return {titulo:"",autor:"",editora:"",ano:"",isbn:null,capa:null,selo:"",categoria:"",duvida:false,armario:"",estado:"",qtd:1,obs:"",autoPreenchido:false};}
 function meusLivros(){return S.livros.filter(function(l){return l.rm===S.user.rm;});}
 function pendAbertas(){return S.pendencias.filter(function(p){return !p.ok;});}
+/* telas para as quais faz sentido voltar — as de resultado passageiro ficam de fora */
+var TELAS_VOLTAVEIS = ["home","scan","historico","histPessoa","acervo","ranking","armarios","painel"];
+
 function ir(t){
+  if(S.tela && S.tela!==t && S.tela!=="login" && t!=="login"){
+    S.hist.push(S.tela);
+    if(S.hist.length>25)S.hist.shift();
+  }
+  if(t==="login")S.hist=[];
   S.tela=t;S.erro="";render();
   if(t==="acervo"||t==="painel")baixarTudo(true);
   else if(t==="home"||t==="historico")baixarTudo(false);
+}
+
+/* volta para a última tela onde a pessoa realmente estava */
+function voltar(){
+  while(S.hist.length){
+    var t=S.hist.pop();
+    if(TELAS_VOLTAVEIS.indexOf(t)>=0){
+      S.tela=t;S.erro="";render();
+      if(t==="acervo"||t==="painel")baixarTudo(true);
+      else if(t==="home"||t==="historico")baixarTudo(false);
+      return;
+    }
+  }
+  S.tela="home";S.erro="";render();baixarTudo(false);
 }
 
 /* ---------- LOGIN ---------- */
@@ -516,7 +552,7 @@ function entrar(){
     hora:new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})};
   S.logins.unshift(reg);
   enviarLogin(reg);
-  salvar(); ir("home");
+  salvar(); S.hist=[]; ir("home");
 }
 
 /* ---------- ISBN ---------- */
@@ -582,39 +618,25 @@ function capitalizar(s){
   if(s!==s.toUpperCase())return s;
   return s.toLowerCase().replace(/(^|\s|['\u2019-])\S/g,function(c){return c.toUpperCase();});
 }
+/* Guarda no celular o que já foi consultado. O mesmo ISBN nunca é
+   perguntado duas vezes — isso derruba muito o consumo das bases. */
+function memoria(){
+  try{ return JSON.parse(localStorage.getItem("cat_isbn")||"{}"); }catch(e){ return {}; }
+}
+function guardarNaMemoria(isbn,dados){
+  try{
+    var m=memoria();
+    m[isbn]=dados;
+    var ks=Object.keys(m);
+    if(ks.length>3000){ for(var i=0;i<500;i++)delete m[ks[i]]; }
+    localStorage.setItem("cat_isbn", JSON.stringify(m));
+  }catch(e){}
+}
 function capaReserva(isbn){
   return "https://covers.openlibrary.org/b/isbn/"+isbn+"-M.jpg?default=false";
 }
-/* Procura uma capa melhor em segundo plano e encaixa na tela quando achar.
-   Não redesenha o formulário, para não apagar o que a pessoa já preencheu. */
-function trocarCapa(url){
-  var img=document.getElementById("capaLivro");
-  if(!img)return;
-  var teste=new Image();
-  teste.onload=function(){
-    if(S.tela!=="formulario")return;
-    S.form.capa=url;
-    img.src=url;
-    img.style.visibility="visible";
-    img.style.display="block";
-  };
-  teste.src=url;
-}
-function buscarCapaEmSegundoPlano(isbn){
-  fetch("https://www.googleapis.com/books/v1/volumes?q=isbn:"+isbn)
-    .then(function(r){return r.json();})
-    .then(function(d){
-      if(S.form.isbn!==isbn)return;
-      var v=d.items&&d.items[0]&&d.items[0].volumeInfo;
-      var lk=v&&v.imageLinks;
-      if(lk){
-        var u=(lk.thumbnail||lk.smallThumbnail||"").replace("http://","https://");
-        if(u)trocarCapa(u.replace("&zoom=1","&zoom=2"));
-      }
-    })
-    .catch(function(){});
-}
 function aplicarDados(isbn,dados){
+  if(!dados.daMemoria)guardarNaMemoria(isbn,dados);
   S.carregando=false;
   S.form=formVazio(); S.form.isbn=isbn;
   S.form.titulo=capitalizar(dados.titulo||"");
@@ -624,8 +646,9 @@ function aplicarDados(isbn,dados){
   S.form.capa=dados.capa||null;
   S.form.autoPreenchido=true;
   ir("formulario");
-  /* a tela já apareceu — agora procura uma capa melhor sem atrapalhar */
-  if(!dados.capaDefinitiva)buscarCapaEmSegundoPlano(isbn);
+  /* Não consultamos mais o Google só por causa da capa: isso dobrava o número
+     de requisições e estourava o limite das bases no meio do mutirão.
+     Sem capa, a pessoa tira foto — que não consome cota nenhuma. */
 }
 function buscarIsbn(isbn){
   pararLeitor();  /* desliga a câmera antes de redesenhar a tela */
@@ -633,16 +656,42 @@ function buscarIsbn(isbn){
   var existente=null;
   for(var i=0;i<S.livros.length;i++){if(S.livros[i].isbn===isbn){existente=S.livros[i];break;}}
   if(existente){S.dup=existente;return ir("duplicado");}
-  S.carregando=true;S.ultimoIsbn=isbn;render();
+
+  S.ultimoIsbn=isbn; S.limitado=false;
+
+  /* 1o: já perguntamos por este ISBN antes? então nem consulta */
+  var m=memoria();
+  if(m[isbn]){
+    if(m[isbn].naoExiste){ S.diag=["Já procuramos este ISBN antes e não existe nas bases."];
+      S.carregando=false;S.form=formVazio();S.form.isbn=isbn;return ir("naoAchou"); }
+    S.diag=["Da memória do aparelho (sem consultar as bases)"];
+    return aplicarDados(isbn,m[isbn]);
+  }
+
+  S.carregando=true;render();
   buscarBrasilAPI(isbn);
+}
+
+/* separa "não existe" de "a base recusou por excesso de uso" */
+function limiteAtingido(status){
+  return status===429 || status===403 || status===503 || status>=500;
+}
+function baseOcupada(){
+  S.carregando=false; S.limitado=true;
+  S.form=formVazio(); S.form.isbn=S.ultimoIsbn;
+  ir("naoAchou");
 }
 
 /* 1a fonte: BrasilAPI — reúne CBL, Mercado Editorial, Open Library e Google Books */
 function buscarBrasilAPI(isbn){
-  S.diag=[];
+  S.diag=[]; S.travou=0;
   fetch("https://brasilapi.com.br/api/isbn/v1/"+isbn)
     .then(function(r){
-      if(!r.ok){ S.diag.push("BrasilAPI: não tem esse ISBN ("+r.status+")"); return Promise.reject("nf"); }
+      if(!r.ok){
+        if(limiteAtingido(r.status)){ S.diag.push("BrasilAPI: recusou por excesso de uso ("+r.status+")"); S.travou++; }
+        else S.diag.push("BrasilAPI: não tem esse ISBN ("+r.status+")");
+        return Promise.reject("nf");
+      }
       return r.json();
     })
     .then(function(d){
@@ -671,8 +720,12 @@ function buscarBrasilAPI(isbn){
 /* 2a fonte: Google Books — cobre bem edição estrangeira */
 function buscarGoogle(isbn){
   fetch("https://www.googleapis.com/books/v1/volumes?q=isbn:"+isbn)
-    .then(function(r){return r.json();})
+    .then(function(r){
+      if(limiteAtingido(r.status)){ S.diag.push("Google Books: recusou por excesso de uso ("+r.status+")"); S.travou++; return Promise.reject("lim"); }
+      return r.json();
+    })
     .then(function(d){
+      if(d&&d.error){ S.diag.push("Google Books: cota esgotada"); S.travou++; return buscarOpenLibrary(isbn); }
       if(d.items&&d.items.length){
         S.diag.push("Google Books: encontrou");
         var v=d.items[0].volumeInfo||{};
@@ -690,8 +743,8 @@ function buscarGoogle(isbn){
       S.diag.push("Google Books: não tem esse ISBN");
       buscarOpenLibrary(isbn);
     })
-    .catch(function(){
-      S.diag.push("Google Books: não respondeu");
+    .catch(function(e){
+      if(e!=="lim"){ S.diag.push("Google Books: não respondeu"); S.travou++; }
       buscarOpenLibrary(isbn);
     });
 }
@@ -715,10 +768,14 @@ function buscarOpenLibrary(isbn){
         });
       }
       S.diag.push("Open Library: não tem esse ISBN");
+      if(S.travou>=2)return baseOcupada();
+      guardarNaMemoria(isbn,{naoExiste:true});
       S.carregando=false;S.form=formVazio();S.form.isbn=isbn;ir("naoAchou");
     })
     .catch(function(){
       S.diag.push("Open Library: não respondeu");
+      S.travou++;
+      if(S.travou>=2)return baseOcupada();
       S.carregando=false;S.form=formVazio();S.form.isbn=isbn;ir("naoAchou");});
 }
 
@@ -873,7 +930,7 @@ function salvarLivro(){
     }
   }
   enviarLivro(novo);
-  S.editando=null;S.form=formVazio();salvar();ir("confirmado");
+  S.editando=null;S.form=formVazio();salvar();S.hist=["home"];ir("confirmado");
 }
 function editar(id){
   var l=null;for(var i=0;i<S.livros.length;i++){if(S.livros[i].id===id)l=S.livros[i];}
@@ -889,7 +946,7 @@ function avisarCoord(){
   var p={id:"p"+Date.now(),tipo:"duplicata",livro:S.dup.id,rel:null,ok:false};
   S.pendencias.unshift(p); enviarPendencia(p);
   S.msg='Aviso enviado. A coordenação vai unir este exemplar com "'+S.dup.titulo+'".';
-  S.dup=null;salvar();ir("confirmado");
+  S.dup=null;salvar();S.hist=["home"];ir("confirmado");
 }
 function resolver(pid){
   var p=null;for(var i=0;i<S.pendencias.length;i++){if(S.pendencias[i].id===pid)p=S.pendencias[i];}
@@ -958,18 +1015,26 @@ function testarBases(){
     .then(function(d){ saida.push("Open Library: "+(d["ISBN:"+isbn]?"OK":"respondeu vazio")); mostrar(); })
     .catch(function(){ saida.push("Open Library: FALHOU"); mostrar(); });
 }
+function cadastrarComIsbn(){
+  /* mantém o ISBN lido, mas deixa título e autor para a pessoa digitar */
+  var isbn=S.ultimoIsbn||null;
+  S.editando=null;
+  S.form=formVazio();
+  S.form.isbn=isbn;
+  ir("formulario");
+}
 function cadastroManual(){S.editando=null;S.form=formVazio();ir("formulario");}
 function verHistorico(rm){S.rmVisto=rm;ir("histPessoa");}
 function sair(){
   pararLeitor();
   try{ localStorage.removeItem("cat_user"); }catch(e){}
-  S.user=null;S.form=formVazio();S.editando=null;ir("login");
+  S.user=null;S.form=formVazio();S.editando=null;S.hist=[];ir("login");
 }
 
 /* ---------- RENDER ---------- */
-function cabecalho(titulo,voltarPara){
+function cabecalho(titulo,comVoltar){
   return '<div class="topo">'+
-    (voltarPara?'<button class="voltar" onclick="ir(\''+voltarPara+'\')">&#8249;</button>':'')+
+    (comVoltar?'<button class="voltar" onclick="voltar()">&#8249;</button>':'')+
     '<h1>'+esc(titulo)+'</h1></div>';
 }
 function cardLivro(l,comEditar){
@@ -1041,7 +1106,7 @@ function render(){
   }
 
   else if(S.tela==="scan"){
-    h=cabecalho("Escanear livro","home")+
+    h=cabecalho("Escanear livro", true)+
       '<div class="visor"><div id="leitor"></div>'+
       '<button id="flash" class="flash-btn" onclick="alternarFlash()" title="Lanterna">&#9889;</button></div>'+
       (S.carregando?'<p style="text-align:center;font-weight:600;color:var(--azul)">Buscando dados do livro…</p>':'')+
@@ -1053,7 +1118,7 @@ function render(){
   }
 
   else if(S.tela==="duplicado"){
-    h=cabecalho("Livro já catalogado","scan")+
+    h=cabecalho("Livro já catalogado", true)+
       '<div class="aviso aviso-coral">Atenção! Chame uma coordenadora ou fale com o líder da sua equipe — este livro já está catalogado.</div>'+
       cardLivro(S.dup,false)+
       '<p style="font-size:12px;color:var(--tinta-suave);margin:14px 0 18px">A coordenadora confirma a união pelo painel dela. Você não precisa fazer mais nada aqui.</p>'+
@@ -1061,22 +1126,34 @@ function render(){
   }
 
   else if(S.tela==="naoAchou"){
-    h=cabecalho("ISBN não encontrado","scan")+
-      '<div class="aviso aviso-amarelo">Procuramos o ISBN <b>'+esc(S.ultimoIsbn||"")+'</b> em três bases públicas e não achamos. '+
-      'Confira se os números batem com o código impresso no livro. '+
-      (S.user.papel==="coordenador"?'Se estiver certo, cadastre manualmente abaixo.'
-        :'Se estiver certo, separe o livro e chame uma coordenadora.')+'</div>';
-    if(S.diag&&S.diag.length){
-      h+='<div class="aviso aviso-azul" style="font-size:12px"><b>O que cada base respondeu:</b><br>'+
-         esc(S.diag.join(" · "))+'</div>';
+    if(S.limitado){
+      h=cabecalho("Bases ocupadas", true)+
+        '<div class="aviso aviso-coral">As bases de ISBN recusaram a consulta por excesso de uso. '+
+        '<b>Não é o livro que não existe</b> — é a rede da escola inteira consultando pelo mesmo endereço.</div>'+
+        '<div class="aviso aviso-azul" style="font-size:13px"><b>O que fazer:</b><br>'+
+        '1. Toque em "Tentar de novo" daqui a alguns segundos.<br>'+
+        '2. Se continuar, cadastre pelo botão abaixo — o livro entra igual, só sem preencher sozinho.</div>'+
+        (S.diag&&S.diag.length?'<div class="aviso aviso-amarelo" style="font-size:12px">'+esc(S.diag.join(" · "))+'</div>':'')+
+        '<button class="btn" onclick="buscarIsbn(S.ultimoIsbn)">Tentar de novo</button>'+
+        '<div style="margin-top:10px"><button class="btn btn-vazado" onclick="cadastrarComIsbn()">Cadastrar digitando o título</button></div>';
+    }else{
+      h=cabecalho("ISBN não encontrado", true)+
+        '<div class="aviso aviso-amarelo">Procuramos o ISBN <b>'+esc(S.ultimoIsbn||"")+'</b> em três bases públicas e não achamos. '+
+        'Confira se os números batem com o código impresso no livro. '+
+        (S.user.papel==="coordenador"?'Se estiver certo, cadastre manualmente abaixo.'
+          :'Se estiver certo, separe o livro e chame uma coordenadora.')+'</div>';
+      if(S.diag&&S.diag.length){
+        h+='<div class="aviso aviso-azul" style="font-size:12px"><b>O que cada base respondeu:</b><br>'+
+           esc(S.diag.join(" · "))+'</div>';
+      }
+      h+=(S.user.papel==="coordenador"
+          ?'<button class="btn" onclick="cadastrarComIsbn()">Cadastrar manualmente</button>'
+          :'<button class="btn btn-vazado" onclick="ir(\'scan\')">Voltar e separar o livro</button>');
     }
-    h+=(S.user.papel==="coordenador"
-        ?'<button class="btn" onclick="ir(\'formulario\')">Cadastrar manualmente</button>'
-        :'<button class="btn btn-vazado" onclick="ir(\'scan\')">Voltar e separar o livro</button>');
   }
 
   else if(S.tela==="semIsbn"){
-    h=cabecalho("Livro sem código de barras","scan")+
+    h=cabecalho("Livro sem código de barras", true)+
       '<div class="aviso aviso-azul">'+
       (S.user.papel==="coordenador"?'Cadastro manual liberado para coordenadoras.'
         :'Separe este livro e chame uma coordenadora ou o líder da sua equipe para cadastrar depois.')+'</div>'+
@@ -1088,7 +1165,7 @@ function render(){
   else if(S.tela==="formulario"){
     var f=S.form;
     var cat = f.selo==="PNLD" ? "PNLD" : f.categoria;
-    h=cabecalho(S.editando?"Editar livro":"Completar cadastro", S.editando?"historico":"scan");
+    h=cabecalho(S.editando?"Editar livro":"Completar cadastro", true);
     if(f.autoPreenchido && !S.editando){
       h+='<div class="livro-destaque">'+
         '<img id="capaLivro" class="capa-gg" src="'+esc(f.capa||SEM_CAPA)+'" alt="" loading="lazy" onerror="this.src=SEM_CAPA">'+
@@ -1178,14 +1255,14 @@ function render(){
 
   else if(S.tela==="historico"){
     var m=meusLivros();
-    h=cabecalho("Meu histórico","home");
+    h=cabecalho("Meu histórico", true);
     h+= m.length? m.map(function(l){return cardLivro(l,true);}).join("")
       : '<div class="vazio">Você ainda não catalogou nenhum livro.</div>';
   }
 
   else if(S.tela==="histPessoa"){
     var lp=S.livros.filter(function(l){return l.rm===S.rmVisto;});
-    h=cabecalho(lp.length?lp[0].nome:"Histórico","painel")+
+    h=cabecalho(lp.length?lp[0].nome:"Histórico", true)+
       '<p style="font-size:12px;font-weight:600;color:var(--tinta-suave);margin:-10px 0 16px">RM '+esc(S.rmVisto)+' · '+lp.length+' livros</p>';
     h+= lp.length? lp.map(function(l){return cardLivro(l,S.user.papel==="coordenador");}).join("")
       : '<div class="vazio">Nenhum livro encontrado.</div>';
@@ -1194,7 +1271,7 @@ function render(){
   else if(S.tela==="acervo"){
     var cats=["Todos"].concat(todasCategorias());
     var lista=filtrar();
-    h=cabecalho("Acervo catalogado","home")+
+    h=cabecalho("Acervo catalogado", true)+
       '<div class="campo"><input id="busca" placeholder="Buscar por título ou autor" value="'+esc(S.busca)+'" oninput="S.busca=this.value;desenhaLista()"></div>'+
       '<div class="chips">';
     for(var c=0;c<cats.length;c++){
@@ -1209,7 +1286,7 @@ function render(){
     var rk=calcularRanking();
     var minhaPos=-1;
     for(var rp=0;rp<rk.length;rp++){ if(S.user&&rk[rp].rm===S.user.rm)minhaPos=rp+1; }
-    h=cabecalho("Ranking","home");
+    h=cabecalho("Ranking", true);
     if(minhaPos>0){
       h+='<div class="contagem"><span>Sua posição</span><b>'+minhaPos+'º</b></div>';
     }
@@ -1222,7 +1299,7 @@ function render(){
   }
 
   else if(S.tela==="armarios"){
-    h=cabecalho("Armários e gêneros","painel");
+    h=cabecalho("Armários e gêneros", true);
     if(S.msgArm){h+='<div class="aviso aviso-azul" style="font-size:13px">'+esc(S.msgArm)+'</div>';S.msgArm="";}
 
     h+='<div class="secao-tit">Gêneros</div>'+
@@ -1289,7 +1366,7 @@ function render(){
   }
 
   else if(S.tela==="painel"){
-    h=cabecalho("Painel da coordenação","home");
+    h=cabecalho("Painel da coordenação", true);
     var pa=pendAbertas();
     h+='<div class="secao-tit">Pendências ('+pa.length+')</div>';
     if(!pa.length)h+='<p style="font-size:14px;color:var(--tinta-suave)">Nenhuma pendência no momento.</p>';
